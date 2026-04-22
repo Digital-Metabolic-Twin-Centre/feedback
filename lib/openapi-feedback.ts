@@ -120,6 +120,32 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
         },
       },
       "/api/v1/admin/keys": {
+        get: {
+          summary: "List API keys (bootstrap token required)",
+          parameters: [
+            {
+              name: "x-bootstrap-token",
+              in: "header",
+              required: true,
+              schema: { type: "string" },
+            },
+            {
+              name: "projectSlug",
+              in: "query",
+              required: false,
+              schema: { type: "string" },
+            },
+            {
+              name: "includeRevoked",
+              in: "query",
+              required: false,
+              schema: { type: "boolean", default: false },
+            },
+          ],
+          responses: {
+            "200": { description: "List of API keys" },
+          },
+        },
         post: {
           summary: "Generate API key (bootstrap token required)",
           parameters: [
@@ -132,6 +158,29 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           ],
           responses: {
             "201": { description: "Generated API key" },
+          },
+        },
+      },
+      "/api/v1/admin/keys/{id}": {
+        delete: {
+          summary: "Revoke API key by id (bootstrap token required)",
+          parameters: [
+            {
+              name: "x-bootstrap-token",
+              in: "header",
+              required: true,
+              schema: { type: "string" },
+            },
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+            },
+          ],
+          responses: {
+            "200": { description: "Revoked" },
+            "404": { description: "Not found" },
           },
         },
       },

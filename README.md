@@ -14,7 +14,9 @@ Headless feedback management backend built with Next.js route handlers and SQLit
 ## Available Routes
 
 - `GET /api/healthcheck`
+- `GET /api/v1/admin/keys` (bootstrap token protected)
 - `POST /api/v1/admin/keys` (bootstrap token protected)
+- `DELETE /api/v1/admin/keys/:id` (bootstrap token protected)
 - `GET /api/v1/openapi.json`
 - `GET /api/v1/docs`
 - `POST /api/v1/feedbacks` (API key)
@@ -28,6 +30,8 @@ Headless feedback management backend built with Next.js route handlers and SQLit
 - Admin operations require an API key created with `isAdmin: true`.
 - API keys are project-bound; feedback data is isolated by `project_id`.
 - Initial key creation uses `x-bootstrap-token` on `POST /api/v1/admin/keys`.
+- Key listing uses `x-bootstrap-token` on `GET /api/v1/admin/keys`.
+- Key revocation uses `x-bootstrap-token` on `DELETE /api/v1/admin/keys/:id`.
 
 ## Environment
 
@@ -78,6 +82,20 @@ Use the returned key as:
 
 ```http
 x-api-key: fbk_...
+```
+
+Revoke an API key by id:
+
+```bash
+curl -X DELETE http://localhost:3000/api/v1/admin/keys/1 \
+  -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN"
+```
+
+List API keys:
+
+```bash
+curl "http://localhost:3000/api/v1/admin/keys?includeRevoked=false" \
+  -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN"
 ```
 
 ## Quick API Examples

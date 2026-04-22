@@ -17,6 +17,20 @@ type ApiKeyRow = {
   is_admin: number;
 };
 
+export type ApiKeySummary = {
+  id: number;
+  projectId: number;
+  projectSlug: string;
+  projectName: string;
+  name: string;
+  keyPrefix: string;
+  isAdmin: boolean;
+  revoked: boolean;
+  lastUsedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 function hashApiKey(rawKey: string): string {
   return crypto.createHash("sha256").update(rawKey).digest("hex");
 }
@@ -133,4 +147,81 @@ export function validateApiKey(rawKey: string): ApiKeyAuthContext | null {
     projectName: row.project_name,
     isAdmin: Boolean(row.is_admin),
   };
+}
+
+export function revokeApiKeyById(keyId: number): { success: boolean; rowCount: number } {
+  const now = new Date().toISOString();
+  const result = db
+    .prepare(
+      `UPDATE api_keys
+       SET soft_delete = 1, updated_at = ?
+       WHERE id = ? AND soft_delete = 0`
+    )
+    .run(now, keyId);
+
+  return { success: result.changes > 0, rowCount: result.changes };
+}
+
+export function listApiKeys(filters?: {
+  projectSlug?: string;
+  includeRevoked?: boolean;
+}): ApiKeySummary[] {
+  const params: Array<string | number> = [];
+  const where: string[] = ["p.soft_delete = 0"];
+
+  if (filters?.projectSlug?.trim()) {
+    where.push("p.slug = ?");
+    params.push(filters.projectSlug.trim().toLowerCase());
+  }
+
+  if (!filters?.includeRevoked) {
+    where.push("k.soft_delete = 0");
+  }
+
+  const rows = db
+    .prepare(
+      `SELECT
+         k.id,
+         k.project_id,
+         p.slug AS project_slug,
+         p.name AS project_name,
+         k.name,
+         k.key_prefix,
+         k.is_admin,
+         k.soft_delete,
+         k.last_used_at,
+         k.created_at,
+         k.updated_at
+       FROM api_keys k
+       JOIN projects p ON p.id = k.project_id
+       WHERE ${where.join(" AND ")}
+       ORDER BY p.slug ASC, k.id DESC`
+    )
+    .all(...params) as Array<{
+      id: number;
+      project_id: number;
+      project_slug: string;
+      project_name: string;
+      name: string;
+      key_prefix: string;
+      is_admin: number;
+      soft_delete: number;
+      last_used_at: string | null;
+      created_at: string;
+      updated_at: string;
+    }>;
+
+  return rows.map((row) => ({
+    id: row.id,
+    projectId: row.project_id,
+    projectSlug: row.project_slug,
+    projectName: row.project_name,
+    name: row.name,
+    keyPrefix: row.key_prefix,
+    isAdmin: Boolean(row.is_admin),
+    revoked: Boolean(row.soft_delete),
+    lastUsedAt: row.last_used_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
 }
