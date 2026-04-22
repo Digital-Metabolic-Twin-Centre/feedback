@@ -17,11 +17,18 @@ Headless feedback management backend built with Next.js route handlers and SQLit
 - `GET /api/v1/admin/keys` (bootstrap token protected)
 - `POST /api/v1/admin/keys` (bootstrap token protected)
 - `DELETE /api/v1/admin/keys/:id` (bootstrap token protected)
+- `POST /api/v1/admin/keys/:id/rotate` (bootstrap token protected)
+- `GET /api/v1/admin/projects` (bootstrap token protected)
+- `POST /api/v1/admin/projects` (bootstrap token protected)
 - `GET /api/v1/openapi.json`
 - `GET /api/v1/docs`
 - `POST /api/v1/feedbacks` (API key)
+- `GET /api/v1/feedbacks/:id` (API key, project scoped)
 - `GET /api/v1/feedbacks/meta` (API key)
 - `GET /api/v1/admin/feedbacks` (admin API key)
+- `GET /api/v1/admin/feedbacks/:id` (admin API key)
+- `GET /api/v1/admin/feedbacks/:id/messages` (admin API key)
+- `POST /api/v1/admin/feedbacks/:id/messages` (admin API key)
 - `PATCH /api/v1/admin/feedbacks/:id` (admin API key)
 
 ## Auth Model
@@ -91,10 +98,33 @@ curl -X DELETE http://localhost:3000/api/v1/admin/keys/1 \
   -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN"
 ```
 
+Rotate an API key by id:
+
+```bash
+curl -X POST http://localhost:3000/api/v1/admin/keys/1/rotate \
+  -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN"
+```
+
 List API keys:
 
 ```bash
 curl "http://localhost:3000/api/v1/admin/keys?includeRevoked=false" \
+  -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN"
+```
+
+Create project:
+
+```bash
+curl -X POST http://localhost:3000/api/v1/admin/projects \
+  -H "Content-Type: application/json" \
+  -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN" \
+  -d '{"slug":"project-alpha","name":"Project Alpha"}'
+```
+
+List projects:
+
+```bash
+curl "http://localhost:3000/api/v1/admin/projects" \
   -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN"
 ```
 
@@ -123,6 +153,22 @@ curl -X PATCH http://localhost:3000/api/v1/admin/feedbacks/1 \
   -H "Content-Type: application/json" \
   -H "x-api-key: $ADMIN_API_KEY" \
   -d '{"action":"status","value":2}'
+```
+
+Get feedback detail (project key):
+
+```bash
+curl "http://localhost:3000/api/v1/feedbacks/1?includeMessages=true" \
+  -H "x-api-key: $API_KEY"
+```
+
+Add admin thread message:
+
+```bash
+curl -X POST http://localhost:3000/api/v1/admin/feedbacks/1/messages \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $ADMIN_API_KEY" \
+  -d '{"message":"Thanks, this is now being worked on."}'
 ```
 
 ## Docs

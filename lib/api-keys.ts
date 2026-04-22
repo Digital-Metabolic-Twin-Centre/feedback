@@ -162,6 +162,90 @@ export function revokeApiKeyById(keyId: number): { success: boolean; rowCount: n
   return { success: result.changes > 0, rowCount: result.changes };
 }
 
+export function rotateApiKeyById(keyId: number): {
+  success: boolean;
+  data?: {
+    oldKeyId: number;
+    newKeyId: number;
+    apiKey: string;
+    keyPrefix: string;
+    projectId: number;
+    projectSlug: string;
+    projectName: string;
+    isAdmin: boolean;
+  };
+  error?: string;
+} {
+  const existing = db
+    .prepare(
+      `SELECT
+         k.id,
+         k.project_id,
+         k.name,
+         k.is_admin,
+         p.slug AS project_slug,
+         p.name AS project_name
+       FROM api_keys k
+       JOIN projects p ON p.id = k.project_id
+       WHERE k.id = ? AND k.soft_delete = 0
+       LIMIT 1`
+    )
+    .get(keyId) as {
+    id: number;
+    project_id: number;
+    name: string;
+    is_admin: number;
+    project_slug: string;
+    project_name: string;
+  } | undefined;
+
+  if (!existing) {
+    return { success: false, error: "API key not found or already revoked." };
+  }
+
+  const apiKey = `fbk_${crypto.randomBytes(24).toString("hex")}`;
+  const keyPrefix = apiKey.slice(0, 16);
+  const keyHash = hashApiKey(apiKey);
+  const now = new Date().toISOString();
+
+  const tx = db.transaction(() => {
+    const inserted = db
+      .prepare(
+        `INSERT INTO api_keys (project_id, name, key_prefix, key_hash, is_admin, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         RETURNING id`
+      )
+      .get(
+        existing.project_id,
+        existing.name,
+        keyPrefix,
+        keyHash,
+        existing.is_admin,
+        now,
+        now
+      ) as { id: number };
+
+    db.prepare(`UPDATE api_keys SET soft_delete = 1, updated_at = ? WHERE id = ?`).run(now, keyId);
+    return inserted.id;
+  });
+
+  const newKeyId = tx();
+
+  return {
+    success: true,
+    data: {
+      oldKeyId: keyId,
+      newKeyId,
+      apiKey,
+      keyPrefix,
+      projectId: existing.project_id,
+      projectSlug: existing.project_slug,
+      projectName: existing.project_name,
+      isAdmin: Boolean(existing.is_admin),
+    },
+  };
+}
+
 export function listApiKeys(filters?: {
   projectSlug?: string;
   includeRevoked?: boolean;

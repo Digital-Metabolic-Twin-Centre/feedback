@@ -1,11 +1,41 @@
 import { NextRequest } from "next/server";
-import { updateFeedback } from "@/lib/feedback/sqlite-queries";
+import { getFeedbackById, updateFeedback } from "@/lib/feedback/sqlite-queries";
 import { syncPromotedFeedbackToGitLab } from "@/lib/gitlab-feedback-sync";
 import { logError } from "@/lib/error-logger";
 import { authenticateApiKey, requireAdmin, v1Json, v1PreflightResponse } from "@/lib/api-v1";
 
 export async function OPTIONS() {
   return v1PreflightResponse();
+}
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const authResult = await authenticateApiKey(req);
+    if (!authResult.ok) return authResult.response;
+
+    const adminError = requireAdmin(authResult.auth);
+    if (adminError) return adminError;
+
+    const { id: idStr } = await params;
+    const id = parseInt(idStr, 10);
+    if (isNaN(id)) {
+      return v1Json({ success: false, error: "Invalid ID" }, { status: 400 });
+    }
+
+    const feedback = getFeedbackById(id, authResult.auth.projectId);
+    if (!feedback) {
+      return v1Json({ success: false, error: "Feedback not found for this project." }, { status: 404 });
+    }
+
+    return v1Json({ success: true, data: feedback });
+  } catch (err) {
+    logError(err, { operation: "v1/admin/feedbacks GET", resource: req.url });
+    const message = err instanceof Error ? err.message : "Internal server error";
+    return v1Json({ success: false, error: message }, { status: 500 });
+  }
 }
 
 export async function PATCH(

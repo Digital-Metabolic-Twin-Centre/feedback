@@ -56,6 +56,30 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           },
         },
       },
+      "/api/v1/feedbacks/{id}": {
+        get: {
+          summary: "Get feedback by id (project scoped)",
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+            },
+            {
+              name: "includeMessages",
+              in: "query",
+              required: false,
+              schema: { type: "boolean", default: false },
+            },
+          ],
+          responses: {
+            "200": { description: "Feedback record" },
+            "404": { description: "Not found" },
+          },
+        },
+      },
       "/api/v1/feedbacks/meta": {
         get: {
           summary: "Reference data for feedback form",
@@ -87,6 +111,22 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
         },
       },
       "/api/v1/admin/feedbacks/{id}": {
+        get: {
+          summary: "Get feedback detail (admin key)",
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+            },
+          ],
+          responses: {
+            "200": { description: "Feedback detail" },
+            "404": { description: "Not found" },
+          },
+        },
         patch: {
           summary: "Update feedback by action (admin key)",
           security: [{ ApiKeyAuth: [] }],
@@ -118,6 +158,107 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           },
           responses: {
             "200": { description: "Updated" },
+          },
+        },
+      },
+      "/api/v1/admin/feedbacks/{id}/messages": {
+        get: {
+          summary: "List feedback thread messages (admin key)",
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+            },
+          ],
+          responses: {
+            "200": { description: "Thread messages" },
+            "404": { description: "Not found" },
+          },
+        },
+        post: {
+          summary: "Add admin thread message (admin key)",
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["message"],
+                  properties: {
+                    message: { type: "string" },
+                    createdBy: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "201": { description: "Message added" },
+            "409": { description: "Feedback closed" },
+          },
+        },
+      },
+      "/api/v1/admin/projects": {
+        get: {
+          summary: "List projects (bootstrap token required)",
+          parameters: [
+            {
+              name: "x-bootstrap-token",
+              in: "header",
+              required: true,
+              schema: { type: "string" },
+            },
+            {
+              name: "includeArchived",
+              in: "query",
+              required: false,
+              schema: { type: "boolean", default: false },
+            },
+          ],
+          responses: {
+            "200": { description: "Project list" },
+          },
+        },
+        post: {
+          summary: "Create project (bootstrap token required)",
+          parameters: [
+            {
+              name: "x-bootstrap-token",
+              in: "header",
+              required: true,
+              schema: { type: "string" },
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["slug", "name"],
+                  properties: {
+                    slug: { type: "string" },
+                    name: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "201": { description: "Project created" },
+            "409": { description: "Slug exists" },
           },
         },
       },
@@ -182,6 +323,29 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           ],
           responses: {
             "200": { description: "Revoked" },
+            "404": { description: "Not found" },
+          },
+        },
+      },
+      "/api/v1/admin/keys/{id}/rotate": {
+        post: {
+          summary: "Rotate API key by id (bootstrap token required)",
+          parameters: [
+            {
+              name: "x-bootstrap-token",
+              in: "header",
+              required: true,
+              schema: { type: "string" },
+            },
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+            },
+          ],
+          responses: {
+            "201": { description: "Rotated" },
             "404": { description: "Not found" },
           },
         },

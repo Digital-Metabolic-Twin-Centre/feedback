@@ -7,7 +7,6 @@
 
 import { feedbackDb as db } from "@/lib/db-sqlite";
 import { deriveSubmitterRef } from "@/lib/feedback/submitter-ref";
-import { ADMIN_GROUP_VIEW_PERMISSIONS } from "@/lib/permissions";
 import type { FeedbackData, FeedbackThreadMessage } from "@/lib/feedback/types";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -80,10 +79,7 @@ export function selectFeedbacks(
   pagination?: { page: number; pageSize: number },
   projectId?: number
 ): { data: FeedbackData[]; total: number } {
-  const isAdmin =
-    groups
-      .map((g) => g.toLowerCase().trim())
-      .includes(ADMIN_GROUP_VIEW_PERMISSIONS.toLowerCase().trim());
+  const isAdmin = groups.length > 0;
 
   const whereClauses: string[] = [];
   const params: unknown[] = [];
@@ -184,6 +180,71 @@ export function selectFeedbacks(
   }));
 
   return { data: rows, total };
+}
+
+export function getFeedbackById(
+  feedbackId: number,
+  projectId?: number
+): FeedbackData | null {
+  const row = db
+    .prepare(
+      `SELECT
+         f.id,
+         f.project_id,
+         f.email,
+         f.submitter_ref,
+         f.organisation,
+         o.name   AS organisation_name,
+         f.page,
+         f.feedback_type,
+         ft.name  AS feedback_type_name,
+         f.feedback_status,
+         fs.name  AS feedback_status_name,
+         f.promote,
+         COALESCE(msg_count.thread_count, 0) AS thread_count,
+         latest_msg.message                  AS latest_thread_message,
+         latest_msg.author_role              AS latest_thread_author_role,
+         f.draft,
+         f.soft_delete,
+         f.created_by,
+         f.created_at,
+         f.updated_by,
+         f.updated_at
+       FROM feedbacks f
+       LEFT JOIN organisations     o  ON f.organisation   = o.id
+       LEFT JOIN feedback_types    ft ON f.feedback_type   = ft.id
+       LEFT JOIN feedback_status   fs ON f.feedback_status = fs.id
+       LEFT JOIN (
+         SELECT feedback_id, COUNT(*) AS thread_count
+         FROM feedback_messages
+         WHERE soft_delete = 0
+         GROUP BY feedback_id
+       ) msg_count ON msg_count.feedback_id = f.id
+       LEFT JOIN (
+         SELECT m1.feedback_id, m1.message, m1.author_role
+         FROM feedback_messages m1
+         WHERE m1.soft_delete = 0
+           AND m1.id = (
+             SELECT m2.id
+             FROM feedback_messages m2
+             WHERE m2.feedback_id = m1.feedback_id AND m2.soft_delete = 0
+             ORDER BY m2.created_at DESC, m2.id DESC
+             LIMIT 1
+           )
+       ) latest_msg ON latest_msg.feedback_id = f.id
+       WHERE f.id = ? ${projectId ? "AND f.project_id = ?" : ""}
+       LIMIT 1`
+    )
+    .get(...(projectId ? [feedbackId, projectId] : [feedbackId])) as FeedbackData | undefined;
+
+  if (!row) return null;
+
+  return {
+    ...row,
+    promote: Boolean(row.promote),
+    draft: Boolean(row.draft),
+    soft_delete: Boolean(row.soft_delete),
+  };
 }
 
 export function insertFeedback(data: InsertFeedbackInput): { insertedId: number } {
@@ -293,28 +354,38 @@ export function updateFeedback(
 // ── Thread messages ────────────────────────────────────────────────────────────
 
 export function getFeedbackOwner(
-  feedbackId: number
+  feedbackId: number,
+  projectId?: number
 ): { email: string; status_name: string } | undefined {
   return db
     .prepare(
       `SELECT f.email, fs.name AS status_name
        FROM feedbacks f
        LEFT JOIN feedback_status fs ON f.feedback_status = fs.id
-       WHERE f.id = ?`
+       WHERE f.id = ? ${projectId ? "AND f.project_id = ?" : ""}`
     )
-    .get(feedbackId) as { email: string; status_name: string } | undefined;
+    .get(...(projectId ? [feedbackId, projectId] : [feedbackId])) as { email: string; status_name: string } | undefined;
 }
 
-export function getThreadMessages(feedbackId: number): FeedbackThreadMessage[] {
+export function getThreadMessages(
+  feedbackId: number,
+  projectId?: number
+): FeedbackThreadMessage[] {
   return db
     .prepare(
       `SELECT id, feedback_id, author_role, message,
               created_by, created_at, updated_by, updated_at
-       FROM feedback_messages
-       WHERE feedback_id = ? AND soft_delete = 0
+       FROM feedback_messages m
+       WHERE feedback_id = ?
+         AND soft_delete = 0
+         AND EXISTS (
+           SELECT 1 FROM feedbacks f
+           WHERE f.id = m.feedback_id
+           ${projectId ? "AND f.project_id = ?" : ""}
+         )
        ORDER BY created_at ASC, id ASC`
     )
-    .all(feedbackId) as FeedbackThreadMessage[];
+    .all(...(projectId ? [feedbackId, projectId] : [feedbackId])) as FeedbackThreadMessage[];
 }
 
 export function insertThreadMessage(input: {
