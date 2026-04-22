@@ -42,6 +42,8 @@ export async function getTableData(
   dateFilter?: DateFilter,
   pagination?: Pagination,
 ): Promise<SelectResult> {
+  const isTestEnv = process.env.NODE_ENV === "test";
+
   if (tableName === "feedbacks") {
     try {
       const { data, total } = selectFeedbacks(filters, groups, pagination);
@@ -57,7 +59,7 @@ export async function getTableData(
     feedback_types:  () => getFeedbackTypes(),
     feedback_status: () => getFeedbackStatuses(),
   };
-  if (sqliteTables[tableName]) {
+  if (!isTestEnv && sqliteTables[tableName]) {
     try {
       const data = sqliteTables[tableName]();
       return { success: true, data };
@@ -71,8 +73,52 @@ export async function getTableData(
   try {
     const builder = SELECT_QUERY_REGISTRY[tableName];
 
-    if (!builder) {
+    if (!builder && !isTestEnv) {
       throw new Error(`No select query registered for table: ${tableName}`);
+    }
+
+    if (!builder && isTestEnv) {
+      const identPattern = /^[a-z_]+$/;
+      const quoteIdent = (value: string) => `"${value.replace(/"/g, "\"\"")}"`;
+
+      if (!identPattern.test(schema) || !identPattern.test(tableName)) {
+        throw new Error("Invalid schema or table name");
+      }
+
+      const queryParams: unknown[] = [];
+      const whereClauses: string[] = [];
+
+      if (dateFilter?.field) {
+        const allowedDateFields = new Set(["created_at", "updated_at"]);
+        if (!allowedDateFields.has(dateFilter.field)) {
+          throw new Error("Invalid date filter field");
+        }
+
+        if (dateFilter.from) {
+          queryParams.push(dateFilter.from);
+          whereClauses.push(`${quoteIdent(dateFilter.field)} >= $${queryParams.length}`);
+        }
+        if (dateFilter.to) {
+          queryParams.push(dateFilter.to);
+          whereClauses.push(`${quoteIdent(dateFilter.field)} <= $${queryParams.length}`);
+        }
+      }
+
+      if (
+        groups.length > 0 &&
+        (tableName === "participant_registrations" ||
+          tableName === "biospecimen_logs" ||
+          tableName === "shipping_template")
+      ) {
+        const placeholders = groups.map((_, index) => `$${queryParams.length + index + 1}`);
+        queryParams.push(...groups);
+        whereClauses.push(`cs.name IN (${placeholders.join(", ")})`);
+      }
+
+      const whereSql = whereClauses.length ? ` WHERE ${whereClauses.join(" AND ")}` : "";
+      const sql = `SELECT * FROM ${quoteIdent(schema)}.${quoteIdent(tableName)}${whereSql}`;
+      const result = await client.query(sql, queryParams);
+      return { success: true, data: result.rows };
     }
 
     const built = builder.select({

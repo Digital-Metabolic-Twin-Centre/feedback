@@ -1,12 +1,51 @@
 import { NextResponse, NextRequest } from "next/server";
 import { corsHeaders } from "./lib/cors";
 import { EMBED_FRAME_SOURCES } from "./lib/security/csp";
+import { publicTables } from "./lib/constants";
+
+type RequestLike = Pick<NextRequest, "method" | "nextUrl">;
+
+function parseTablesList(raw: string | null): string[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+export function shouldBypassApiAuth(req: RequestLike): boolean {
+  const { pathname, searchParams } = req.nextUrl;
+
+  if (req.method === "OPTIONS") {
+    return true;
+  }
+
+  if (pathname === "/api/csrf-token" || pathname === "/api/healthcheck") {
+    return true;
+  }
+
+  if (req.method !== "GET") {
+    return false;
+  }
+
+  if (pathname === "/api/select") {
+    const table = searchParams.get("table");
+    return Boolean(table && publicTables.has(table));
+  }
+
+  if (pathname === "/api/select/multiple") {
+    const tables = parseTablesList(searchParams.get("tables"));
+    return tables.length > 0 && tables.every((table) => publicTables.has(table));
+  }
+
+  return false;
+}
 
 export default function middleware(req: NextRequest) {
   const origin = req.headers.get("origin");
 
   // Handle CORS preflight
-  if (req.method === "OPTIONS") {
+  if (shouldBypassApiAuth(req) && req.method === "OPTIONS") {
     const headers = corsHeaders(origin);
     const filteredHeaders = Object.fromEntries(
       Object.entries(headers).filter(([, value]) => value !== undefined),
@@ -52,5 +91,4 @@ export const config = {
     "/admin",
   ],
 };
-
 

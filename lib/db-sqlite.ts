@@ -3,7 +3,7 @@ import path from "path";
 import fs from "fs";
 import { env } from "./env-validation";
 
-const DB_PATH = path.resolve(process.cwd(), env.SQLITE_PATH);
+const DB_PATH = path.resolve(process.cwd(), env.SQLITE_PATH || "./data/feedback.db");
 
 // Ensure the directory exists
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
