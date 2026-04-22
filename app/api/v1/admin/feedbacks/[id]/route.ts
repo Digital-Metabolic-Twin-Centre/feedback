@@ -13,7 +13,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authResult = authenticateApiKey(req);
+    const authResult = await authenticateApiKey(req);
     if (!authResult.ok) return authResult.response;
 
     const adminError = requireAdmin(authResult.auth);

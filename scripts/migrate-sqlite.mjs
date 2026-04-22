@@ -117,7 +117,7 @@ db.exec(`
     project_id       INTEGER REFERENCES projects(id),
     email            TEXT    NOT NULL,
     submitter_ref    TEXT,
-    clinical_site    INTEGER REFERENCES organisations(id),
+    organisation    INTEGER REFERENCES organisations(id),
     page             TEXT,
     feedback_type    INTEGER REFERENCES feedback_types(id),
     feedback_status  INTEGER REFERENCES feedback_status(id),

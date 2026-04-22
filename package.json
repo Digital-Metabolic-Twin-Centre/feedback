@@ -2,13 +2,14 @@
   "name": "feedbacks-dmtc",
   "version": "0.1.0",
   "scripts": {
-    "dev": "NODE_ENV=development next dev -p 3000",
+    "dev": "NODE_ENV=development NEXT_DISABLE_TURBOPACK=1 next dev --webpack -p 3000",
     "build": "NODE_ENV=production next build",
     "start": "NODE_ENV=production next start",
     "lint": "eslint .",
+    "clean": "rm -rf .next",
     "migrate:sqlite": "node scripts/migrate-sqlite.mjs",
-    "migrate:sqlite:seed": "node scripts/migrate-sqlite.mjs --seed",
-    "migrate:sqlite:fresh": "node scripts/migrate-sqlite.mjs --fresh"
+    "migrate:sqlite-seed": "node scripts/migrate-sqlite.mjs --seed",
+    "migrate:sqlite-fresh": "node scripts/migrate-sqlite.mjs --fresh"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",

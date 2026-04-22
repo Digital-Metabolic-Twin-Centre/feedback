@@ -11,6 +11,15 @@ import {
 const GITLAB_API_BASE = "https://gitlab.com/api/v4";
 const FEEDBACK_LABEL_PREFIX = "imdhub-feedback";
 
+function requireGitLabConfig(): { token: string; projectId: string } {
+  const token = env.GITLAB_ISSUES_REPORTING_TOKEN;
+  const projectId = env.GITLAB_REPORTING_PROJECT_ID;
+  if (!token || !projectId) {
+    throw new Error("GitLab sync is not configured. Set GITLAB_REPORTING_PROJECT_ID and GITLAB_ISSUES_REPORTING_TOKEN.");
+  }
+  return { token, projectId };
+}
+
 type GitLabIssue = {
   iid: number;
   web_url?: string;
@@ -35,11 +44,12 @@ function messageMarker(messageId: number) {
 }
 
 async function gitlabRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const { token } = requireGitLabConfig();
   const res = await fetch(`${GITLAB_API_BASE}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      "PRIVATE-TOKEN": env.GITLAB_ISSUES_REPORTING_TOKEN,
+      "PRIVATE-TOKEN": token,
       ...(init.headers ?? {}),
     },
     cache: "no-store",
@@ -91,7 +101,7 @@ function buildIssueDescription(feedback: FeedbackForGitLab, firstMessage?: Feedb
     "",
     `- Type: ${feedback.feedback_type_name ?? "N/A"}`,
     `- Status: ${feedback.feedback_status_name ?? "N/A"}`,
-    `- Clinical Site: ${feedback.clinical_site_name ?? "N/A"}`,
+    `- Clinical Site: ${feedback.organisation_name ?? "N/A"}`,
     `- Submitter Ref: ${feedback.submitter_ref ?? `feedback-${feedback.id}`}`,
     `- Page: ${feedback.page ?? "N/A"}`,
     `- Created At: ${feedback.created_at ?? "N/A"}`,
@@ -123,28 +133,29 @@ function buildThreadNote(message: FeedbackMessageForGitLab) {
 }
 
 async function findIssueByFeedbackId(feedbackId: number) {
-  const projectId = encodeURIComponent(env.GITLAB_REPORTING_PROJECT_ID);
+  const { projectId } = requireGitLabConfig();
+  const encodedProjectId = encodeURIComponent(projectId);
   const label = encodeURIComponent(getFeedbackLabel(feedbackId));
   const issues = await gitlabRequest<GitLabIssue[]>(
-    `/projects/${projectId}/issues?state=all&labels=${label}&per_page=1&order_by=created_at&sort=desc`,
+    `/projects/${encodedProjectId}/issues?state=all&labels=${label}&per_page=1&order_by=created_at&sort=desc`,
   );
   return issues[0] ?? null;
 }
 
 async function findIssueByIid(issueIid: number) {
-  const projectId = encodeURIComponent(env.GITLAB_REPORTING_PROJECT_ID);
-  return gitlabRequest<GitLabIssue>(`/projects/${projectId}/issues/${issueIid}`);
+  const { projectId } = requireGitLabConfig();
+  return gitlabRequest<GitLabIssue>(`/projects/${encodeURIComponent(projectId)}/issues/${issueIid}`);
 }
 
 async function createIssue(feedback: FeedbackForGitLab, firstMessage?: FeedbackMessageForGitLab) {
-  const projectId = encodeURIComponent(env.GITLAB_REPORTING_PROJECT_ID);
+  const { projectId } = requireGitLabConfig();
   const labels = [
     FEEDBACK_LABEL_PREFIX,
     getFeedbackLabel(feedback.id),
     feedbackTypeLabel(feedback),
   ].join(",");
 
-  return gitlabRequest<GitLabIssue>(`/projects/${projectId}/issues`, {
+  return gitlabRequest<GitLabIssue>(`/projects/${encodeURIComponent(projectId)}/issues`, {
     method: "POST",
     body: JSON.stringify({
       title: issueTitle(feedback),
@@ -155,31 +166,31 @@ async function createIssue(feedback: FeedbackForGitLab, firstMessage?: FeedbackM
 }
 
 async function listIssueNotes(issueIid: number) {
-  const projectId = encodeURIComponent(env.GITLAB_REPORTING_PROJECT_ID);
+  const { projectId } = requireGitLabConfig();
   return gitlabRequest<GitLabNote[]>(
-    `/projects/${projectId}/issues/${issueIid}/notes?per_page=100&order_by=created_at&sort=asc`,
+    `/projects/${encodeURIComponent(projectId)}/issues/${issueIid}/notes?per_page=100&order_by=created_at&sort=asc`,
   );
 }
 
 async function createIssueNote(issueIid: number, body: string) {
-  const projectId = encodeURIComponent(env.GITLAB_REPORTING_PROJECT_ID);
-  return gitlabRequest<GitLabNote>(`/projects/${projectId}/issues/${issueIid}/notes`, {
+  const { projectId } = requireGitLabConfig();
+  return gitlabRequest<GitLabNote>(`/projects/${encodeURIComponent(projectId)}/issues/${issueIid}/notes`, {
     method: "POST",
     body: JSON.stringify({ body }),
   });
 }
 
 async function closeIssue(issueIid: number) {
-  const projectId = encodeURIComponent(env.GITLAB_REPORTING_PROJECT_ID);
-  return gitlabRequest<GitLabIssue>(`/projects/${projectId}/issues/${issueIid}`, {
+  const { projectId } = requireGitLabConfig();
+  return gitlabRequest<GitLabIssue>(`/projects/${encodeURIComponent(projectId)}/issues/${issueIid}`, {
     method: "PUT",
     body: JSON.stringify({ state_event: "close" }),
   });
 }
 
 async function reopenIssue(issueIid: number) {
-  const projectId = encodeURIComponent(env.GITLAB_REPORTING_PROJECT_ID);
-  return gitlabRequest<GitLabIssue>(`/projects/${projectId}/issues/${issueIid}`, {
+  const { projectId } = requireGitLabConfig();
+  return gitlabRequest<GitLabIssue>(`/projects/${encodeURIComponent(projectId)}/issues/${issueIid}`, {
     method: "PUT",
     body: JSON.stringify({ state_event: "reopen" }),
   });

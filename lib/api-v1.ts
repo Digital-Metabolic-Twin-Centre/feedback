@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateApiKey, type ApiKeyAuthContext } from "@/lib/api-keys";
+import type { ApiKeyAuthContext } from "@/lib/api-keys";
 
 export function v1CorsHeaders(): Record<string, string> {
   return {
@@ -24,9 +24,11 @@ export function v1Json(data: unknown, init?: { status?: number }): NextResponse 
   });
 }
 
-export function authenticateApiKey(req: NextRequest):
+export async function authenticateApiKey(req: NextRequest): Promise<
   | { ok: true; auth: ApiKeyAuthContext }
-  | { ok: false; response: NextResponse } {
+  | { ok: false; response: NextResponse }
+> {
+  const { validateApiKey } = await import("@/lib/api-keys");
   const headerKey = req.headers.get("x-api-key") || "";
   const auth = validateApiKey(headerKey);
 

@@ -27,7 +27,9 @@ function parseCommaSeparatedEmails(raw: string | null | undefined): string[] {
 function buildFeedbackUrl(feedbackId: number): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "";
   const base = appUrl.endsWith("/") ? appUrl.slice(0, -1) : appUrl;
-  return base ? `${base}/feedbacks?feedbackId=${feedbackId}` : `/feedbacks`;
+  return base
+    ? `${base}/api/v1/admin/feedbacks?feedbackId=${feedbackId}`
+    : `/api/v1/admin/feedbacks?feedbackId=${feedbackId}`;
 }
 
 function escapeHtml(value: string): string {

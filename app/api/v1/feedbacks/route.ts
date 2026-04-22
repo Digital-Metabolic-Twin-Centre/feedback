@@ -6,7 +6,7 @@ import { authenticateApiKey, requireAdmin, v1Json, v1PreflightResponse } from "@
 
 const feedbackPayloadSchema = z.object({
   email: z.string().email(),
-  clinical_site: z.coerce.number().int().positive().optional().nullable(),
+  organisation: z.coerce.number().int().positive().optional().nullable(),
   page: z.string().max(500).optional().nullable(),
   feedback_type: z.coerce.number().int().positive().optional().nullable(),
   feedback_status: z.coerce.number().int().positive().optional().nullable(),
@@ -21,7 +21,7 @@ export async function OPTIONS() {
 
 export async function POST(req: NextRequest) {
   try {
-    const authResult = authenticateApiKey(req);
+    const authResult = await authenticateApiKey(req);
     if (!authResult.ok) return authResult.response;
 
     const body = await req.json().catch(() => ({}));
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const authResult = authenticateApiKey(req);
+    const authResult = await authenticateApiKey(req);
     if (!authResult.ok) return authResult.response;
 
     const adminError = requireAdmin(authResult.auth);

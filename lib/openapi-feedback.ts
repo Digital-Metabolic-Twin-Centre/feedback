@@ -23,7 +23,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           required: ["email"],
           properties: {
             email: { type: "string", format: "email" },
-            clinical_site: { type: "integer", nullable: true },
+            organisation: { type: "integer", nullable: true },
             page: { type: "string", nullable: true },
             feedback_type: { type: "integer", nullable: true },
             feedback_status: { type: "integer", nullable: true },

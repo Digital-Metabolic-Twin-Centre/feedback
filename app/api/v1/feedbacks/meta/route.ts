@@ -8,7 +8,7 @@ export async function OPTIONS() {
 
 export async function GET(req: NextRequest) {
   try {
-    const authResult = authenticateApiKey(req);
+    const authResult = await authenticateApiKey(req);
     if (!authResult.ok) return authResult.response;
 
     return v1Json({

@@ -17,7 +17,7 @@ export type RefRow = { id: number; name: string; label: string | null };
 export type InsertFeedbackInput = {
   project_id?: number | null;
   email: string;
-  clinical_site?: number | null;
+  organisation?: number | null;
   page?: string | null;
   feedback_type?: number | null;
   feedback_status?: number | null;
@@ -80,18 +80,10 @@ export function selectFeedbacks(
   pagination?: { page: number; pageSize: number },
   projectId?: number
 ): { data: FeedbackData[]; total: number } {
-  const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-
-  const sessionEmail = (filters.__session_email ?? "").trim().toLowerCase();
-
   const isAdmin =
     groups
       .map((g) => g.toLowerCase().trim())
-      .includes(ADMIN_GROUP_VIEW_PERMISSIONS.toLowerCase().trim()) ||
-    (sessionEmail.length > 0 && adminEmails.includes(sessionEmail));
+      .includes(ADMIN_GROUP_VIEW_PERMISSIONS.toLowerCase().trim());
 
   const whereClauses: string[] = [];
   const params: unknown[] = [];
@@ -126,8 +118,8 @@ export function selectFeedbacks(
       f.project_id,
       f.email,
       f.submitter_ref,
-      f.clinical_site,
-      o.name   AS clinical_site_name,
+      f.organisation,
+      o.name   AS organisation_name,
       f.page,
       f.feedback_type,
       ft.name  AS feedback_type_name,
@@ -144,7 +136,7 @@ export function selectFeedbacks(
       f.updated_by,
       f.updated_at
     FROM feedbacks f
-    LEFT JOIN organisations     o  ON f.clinical_site   = o.id
+    LEFT JOIN organisations     o  ON f.organisation   = o.id
     LEFT JOIN feedback_types    ft ON f.feedback_type   = ft.id
     LEFT JOIN feedback_status   fs ON f.feedback_status = fs.id
     LEFT JOIN (
@@ -215,7 +207,7 @@ export function insertFeedback(data: InsertFeedbackInput): { insertedId: number 
   const result = db
     .prepare(
       `INSERT INTO feedbacks
-         (project_id, email, submitter_ref, clinical_site, page, feedback_type, feedback_status,
+         (project_id, email, submitter_ref, organisation, page, feedback_type, feedback_status,
           promote, draft, created_by, created_at, updated_by, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        RETURNING id`
@@ -224,7 +216,7 @@ export function insertFeedback(data: InsertFeedbackInput): { insertedId: number 
       projectId,
       email,
       submitter_ref,
-      data.clinical_site ?? null,
+      data.organisation ?? null,
       data.page ?? null,
       data.feedback_type ?? null,
       feedbackStatus,
@@ -259,7 +251,7 @@ export function updateFeedback(
 
   const now = new Date().toISOString();
   const allowed = new Set([
-    "email", "clinical_site", "page", "feedback_type", "feedback_status",
+    "email", "organisation", "page", "feedback_type", "feedback_status",
     "promote", "draft", "soft_delete", "updated_by",
   ]);
 
@@ -359,7 +351,7 @@ export function insertThreadMessage(input: {
 export type FeedbackForGitLab = {
   id: number;
   submitter_ref: string | null;
-  clinical_site_name: string | null;
+  organisation_name: string | null;
   page: string | null;
   feedback_type_name: string | null;
   feedback_status_name: string | null;
@@ -391,7 +383,7 @@ export function loadFeedbackForGitLab(feedbackId: number): {
       `SELECT
          f.id,
          f.submitter_ref,
-         o.name   AS clinical_site_name,
+         o.name   AS organisation_name,
          f.page,
          ft.name  AS feedback_type_name,
          fs.name  AS feedback_status_name,
@@ -405,7 +397,7 @@ export function loadFeedbackForGitLab(feedbackId: number): {
          f.updated_by,
          f.updated_at
        FROM feedbacks f
-       LEFT JOIN organisations   o  ON f.clinical_site   = o.id
+       LEFT JOIN organisations   o  ON f.organisation   = o.id
        LEFT JOIN feedback_types  ft ON f.feedback_type   = ft.id
        LEFT JOIN feedback_status fs ON f.feedback_status = fs.id
        WHERE f.id = ?`

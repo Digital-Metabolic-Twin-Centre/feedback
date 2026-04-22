@@ -3,8 +3,8 @@ export interface FeedbackData {
   project_id?: number | null;
   email: string | null;
   submitter_ref: string | null;
-  clinical_site: number;
-  clinical_site_name?: string | null;
+  organisation: number;
+  organisation_name?: string | null;
   page: string | null;
   feedback_type: number;
   feedback_type_name?: string | null;

@@ -78,7 +78,7 @@ function applySchema(db: Database.Database) {
       project_id      INTEGER REFERENCES projects(id),
       email           TEXT    NOT NULL,
       submitter_ref   TEXT,
-      clinical_site   INTEGER REFERENCES organisations(id),
+      organisation   INTEGER REFERENCES organisations(id),
       page            TEXT,
       feedback_type   INTEGER REFERENCES feedback_types(id),
       feedback_status INTEGER REFERENCES feedback_status(id),
@@ -95,7 +95,6 @@ function applySchema(db: Database.Database) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_feedbacks_email      ON feedbacks(email);
-    CREATE INDEX IF NOT EXISTS idx_feedbacks_project_id ON feedbacks(project_id);
     CREATE INDEX IF NOT EXISTS idx_feedbacks_created_at ON feedbacks(created_at);
     CREATE INDEX IF NOT EXISTS idx_feedbacks_soft_delete ON feedbacks(soft_delete);
 
@@ -149,8 +148,8 @@ function applySchema(db: Database.Database) {
   const hasProjectId = feedbackColumns.some((col) => col.name === "project_id");
   if (!hasProjectId) {
     db.exec(`ALTER TABLE feedbacks ADD COLUMN project_id INTEGER REFERENCES projects(id)`);
-    db.exec(`CREATE INDEX IF NOT EXISTS idx_feedbacks_project_id ON feedbacks(project_id)`);
   }
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_feedbacks_project_id ON feedbacks(project_id)`);
 
   const defaultProject = db
     .prepare(`SELECT id FROM projects WHERE slug = ? LIMIT 1`)
