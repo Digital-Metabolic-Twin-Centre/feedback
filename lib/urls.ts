@@ -27,5 +27,6 @@ export const API_ENDPOINTS = {
   UPDATE: "/api/update",
   CENTRAL_RESOURCES: "/api/central-resources",
   NOTIFICATION: "/api/notification",
+  ADMIN_FEEDBACKS: "/api/admin/feedbacks",
 } as const;
 

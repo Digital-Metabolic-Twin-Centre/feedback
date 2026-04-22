@@ -27,6 +27,7 @@ export default function TopMenu({
   const links = [
     { label: "Home", href: SITE_PATHS.HOMEPAGE },
     { label: "Feedbacks", href: SITE_PATHS.FEEDBACKS },
+    ...(isAdmin ? [{ label: "Admin", href: SITE_PATHS.ADMIN }] : []),
   ];
 
   return (
