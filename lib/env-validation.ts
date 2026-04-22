@@ -31,6 +31,8 @@ const envSchema = z.object({
   FEEDBACK_DISTRIBUTION_EMAILS: z.string().optional(),
   FEEDBACK_EMAIL_COOLDOWN_HOURS: z.coerce.number().int().min(0).max(168).default(4),
   MAIL_PROVIDER: z.string().optional(),
+  FEEDBACK_BOOTSTRAP_TOKEN: z.string().min(16).optional(),
+  NEXT_PUBLIC_FEEDBACK_API_URL: z.string().url().optional(),
 });
 
 const isBuildPhase =

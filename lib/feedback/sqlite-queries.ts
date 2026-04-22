@@ -15,6 +15,7 @@ import type { FeedbackData, FeedbackThreadMessage } from "@/app/feedbacks/types/
 export type RefRow = { id: number; name: string; label: string | null };
 
 export type InsertFeedbackInput = {
+  project_id?: number | null;
   email: string;
   clinical_site?: number | null;
   page?: string | null;
@@ -76,7 +77,8 @@ export function getOrganisations(filters: Record<string, string> = {}): RefRow[]
 export function selectFeedbacks(
   filters: Record<string, string> = {},
   groups: string[] = [],
-  pagination?: { page: number; pageSize: number }
+  pagination?: { page: number; pageSize: number },
+  projectId?: number
 ): { data: FeedbackData[]; total: number } {
   const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
     .split(",")
@@ -111,11 +113,17 @@ export function selectFeedbacks(
     params.push(filters.__session_email);
   }
 
+  if (projectId) {
+    whereClauses.push(`f.project_id = ?`);
+    params.push(projectId);
+  }
+
   const where = whereClauses.length ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
   const baseQuery = `
     SELECT
       f.id,
+      f.project_id,
       f.email,
       f.submitter_ref,
       f.clinical_site,
@@ -190,6 +198,10 @@ export function insertFeedback(data: InsertFeedbackInput): { insertedId: number 
   const now = new Date().toISOString();
   const email = typeof data.email === "string" ? data.email.trim().toLowerCase() : "";
   const submitter_ref = deriveSubmitterRef(email);
+  const defaultProject = db
+    .prepare(`SELECT id FROM projects WHERE slug = 'default' LIMIT 1`)
+    .get() as { id: number } | undefined;
+  const projectId = data.project_id ?? defaultProject?.id ?? null;
 
   // Resolve status to "Open" by default if not provided
   let feedbackStatus = data.feedback_status ?? null;
@@ -203,12 +215,13 @@ export function insertFeedback(data: InsertFeedbackInput): { insertedId: number 
   const result = db
     .prepare(
       `INSERT INTO feedbacks
-         (email, submitter_ref, clinical_site, page, feedback_type, feedback_status,
+         (project_id, email, submitter_ref, clinical_site, page, feedback_type, feedback_status,
           promote, draft, created_by, created_at, updated_by, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        RETURNING id`
     )
     .get(
+      projectId,
       email,
       submitter_ref,
       data.clinical_site ?? null,
@@ -228,13 +241,16 @@ export function insertFeedback(data: InsertFeedbackInput): { insertedId: number 
 
 export function updateFeedback(
   id: number,
-  updates: Record<string, unknown>
+  updates: Record<string, unknown>,
+  projectId?: number
 ): { rowCount: number } | { error: string } {
   // Prevent un-promoting an already-promoted feedback
   if (updates.promote === false || updates.promote === 0) {
     const existing = db
-      .prepare(`SELECT promote FROM feedbacks WHERE id = ?`)
-      .get(id) as { promote: number } | undefined;
+      .prepare(
+        `SELECT promote FROM feedbacks WHERE id = ? ${projectId ? "AND project_id = ?" : ""}`
+      )
+      .get(...(projectId ? [id, projectId] : [id])) as { promote: number } | undefined;
 
     if (existing?.promote === 1) {
       return { error: "Promoted feedback cannot be unpromoted." };
@@ -267,10 +283,16 @@ export function updateFeedback(
 
   setClauses.push(`updated_at = ?`);
   values.push(now);
-  values.push(id);
+  if (projectId) {
+    values.push(id, projectId);
+  } else {
+    values.push(id);
+  }
 
   const result = db
-    .prepare(`UPDATE feedbacks SET ${setClauses.join(", ")} WHERE id = ?`)
+    .prepare(
+      `UPDATE feedbacks SET ${setClauses.join(", ")} WHERE id = ? ${projectId ? "AND project_id = ?" : ""}`
+    )
     .run(...values);
 
   return { rowCount: result.changes };

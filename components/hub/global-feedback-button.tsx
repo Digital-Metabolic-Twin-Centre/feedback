@@ -1,3 +1,4 @@
+// reference implementation - see src/ for the npm package version
 "use client";
 
 import Link from "next/link";

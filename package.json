@@ -1,7 +1,6 @@
 {
-  "name": "imdhub",
+  "name": "feedbacks-dmtc",
   "version": "0.1.0",
-  "private": true,
   "scripts": {
     "dev": "NODE_ENV=development next dev -p 3000",
     "build": "NODE_ENV=production next build",
@@ -21,7 +20,9 @@
     "seed:all": "node seeders/runner.js seed-all",
     "seed:rollback-all": "node seeders/runner.js rollback-all",
     "seed:participant-registration-seeder": "node seeders/runner.js seed participant-registration-seeder",
-    "seed:participant-registration-seeder:rollback": "node seeders/runner.js rollback participant-registration-seeder"
+    "seed:participant-registration-seeder:rollback": "node seeders/runner.js rollback participant-registration-seeder",
+    "build:lib": "tsup",
+    "dev:lib": "tsup --watch"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",
@@ -143,9 +144,36 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "ts-jest": "^29.4.6",
-    "ts-node": "^1.7.1"
+    "ts-node": "^1.7.1",
+    "tsup": "^8.5.1"
   },
   "overrides": {
     "nodemailer": "8.0.5"
+  },
+  "description": "Embeddable feedback widget and admin panel for React apps",
+  "keywords": [
+    "feedback",
+    "react",
+    "widget",
+    "admin"
+  ],
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./styles": "./dist/styles/feedback.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
   }
 }

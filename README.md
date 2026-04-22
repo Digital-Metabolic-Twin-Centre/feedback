@@ -1,3 +1,119 @@
+# feedbacks-react
+
+Embeddable feedback widget and admin panel for React apps.
+
+## Installation
+
+```bash
+npm install feedbacks-react
+```
+
+## FeedbackWidget
+
+```tsx
+import { FeedbackWidget } from "feedbacks-react";
+import "feedbacks-react/styles";
+
+export default function App() {
+  return (
+    <>
+      {/* Your app */}
+      <FeedbackWidget
+        endpoint="https://yourapi.com/api/v1/feedbacks"
+        metaEndpoint="https://yourapi.com/api/v1/feedbacks/meta"
+        adminEmails={["admin@yourcompany.com"]}
+        currentUserEmail={currentUser?.email}
+      />
+    </>
+  );
+}
+```
+
+## AdminPanel
+
+```tsx
+import { AdminPanel } from "feedbacks-react";
+import "feedbacks-react/styles";
+
+export default function AdminPage() {
+  return (
+    <AdminPanel
+      feedbacksEndpoint="https://yourapi.com/api/v1/admin/feedbacks"
+      formEndpoint="https://yourapi.com/api/v1/feedbacks"
+      metaEndpoint="https://yourapi.com/api/v1/feedbacks/meta"
+      adminEmail="admin@yourcompany.com"
+    />
+  );
+}
+```
+
+## CSS Custom Properties
+
+| Variable | Default | Description |
+|---|---|---|
+| `--fb-primary` | `#0e7490` | Primary brand colour |
+| `--fb-primary-hover` | `#0c6280` | Hover state for primary |
+| `--fb-primary-fg` | `#ffffff` | Text on primary background |
+| `--fb-bg` | `#ffffff` | Component background |
+| `--fb-bg-muted` | `#f8fafc` | Muted/subtle background |
+| `--fb-border` | `#e2e8f0` | Border colour |
+| `--fb-text` | `#0f172a` | Primary text colour |
+| `--fb-text-muted` | `#64748b` | Secondary text colour |
+| `--fb-radius` | `0.5rem` | Border radius (modals, cards) |
+| `--fb-font` | `inherit` | Font family |
+
+```css
+:root {
+  --fb-primary: #7c3aed;
+  --fb-radius: 0.75rem;
+  --fb-font: "Inter", sans-serif;
+}
+```
+
+## Backend API Contract
+
+### POST /api/v1/feedbacks
+Accepts: `{ email, clinical_site, feedback_type, feedback_status, page, initial_message }`  
+Returns: `{ success: true, id: number }`
+
+### GET /api/v1/feedbacks/meta
+Returns: `{ types: [...], organisations: [...], statuses: [...] }`  
+Each item: `{ id: number, name: string, label?: string }`
+
+### GET /api/v1/admin/feedbacks
+Returns: `{ data: FeedbackData[] }`
+
+### PATCH /api/v1/admin/feedbacks/:id
+Accepts: `{ action: "status"|"close"|"wontfix"|"promote"|"delete"|"restore", value?: number }`  
+Returns: `{ success: boolean, error?: string }`
+
+### POST /api/v1/admin/keys
+Header: `x-bootstrap-token: <FEEDBACK_BOOTSTRAP_TOKEN>`  
+Accepts: `{ projectSlug?, projectName?, keyName?, isAdmin? }`  
+Returns: `{ success: true, data: { apiKey, projectId, projectSlug, isAdmin, ... } }`
+
+### GET /api/v1/openapi.json
+OpenAPI 3.0 spec for all v1 endpoints.
+
+### GET /api/v1/docs
+Swagger UI for interactive docs.
+
+## Security
+
+The widget does not handle authentication itself. Pass credentials via props:
+- `token` — sent as `Authorization: Bearer <token>`
+- `apiKey` — sent as `x-api-key: <key>`
+
+API key model:
+- Keys are stored hashed in SQLite (`api_keys` table).
+- Each key belongs to a single `project`.
+- Feedback rows are scoped by `project_id` automatically.
+- Use admin keys for `/api/v1/admin/*` operations.
+
+---
+
+## Self-Hosted / Demo App
+
 # Feedback Platform
 
 A lightweight, self-hosted feedback management tool built with Next.js. Users submit feedback from any page; admins review, respond, update status, and promote issues to GitLab — all without a login system.
@@ -56,9 +172,24 @@ NEXT_PUBLIC_ADMIN_EMAILS=admin@admin.com
 
 # Set to disabled if you don't want email notifications
 MAIL_PROVIDER=disabled
+
+# Required to generate API keys via POST /api/v1/admin/keys
+FEEDBACK_BOOTSTRAP_TOKEN=<run: openssl rand -hex 24>
+
+# Optional base URL used in OpenAPI server metadata
+NEXT_PUBLIC_FEEDBACK_API_URL=http://localhost:3000
 ```
 
 > See `.env.local.example` for the full list of available options.
+
+Generate your first admin API key:
+
+```bash
+curl -X POST http://localhost:3000/api/v1/admin/keys \
+  -H "Content-Type: application/json" \
+  -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN" \
+  -d '{"projectSlug":"default","projectName":"Default Project","keyName":"admin","isAdmin":true}'
+```
 
 ### 3. Set up the SQLite database
 

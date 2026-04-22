@@ -26,6 +26,16 @@ if (!globalForSqlite.feedbackDb) {
 
 function applySchema(db: Database.Database) {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS projects (
+      id        INTEGER PRIMARY KEY AUTOINCREMENT,
+      slug      TEXT NOT NULL UNIQUE,
+      name      TEXT NOT NULL,
+      draft     INTEGER NOT NULL DEFAULT 0,
+      soft_delete INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+      updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+    );
+
     CREATE TABLE IF NOT EXISTS organisations (
       id        INTEGER PRIMARY KEY AUTOINCREMENT,
       name      TEXT NOT NULL,
@@ -65,6 +75,7 @@ function applySchema(db: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS feedbacks (
       id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id      INTEGER REFERENCES projects(id),
       email           TEXT    NOT NULL,
       submitter_ref   TEXT,
       clinical_site   INTEGER REFERENCES organisations(id),
@@ -84,8 +95,26 @@ function applySchema(db: Database.Database) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_feedbacks_email      ON feedbacks(email);
+    CREATE INDEX IF NOT EXISTS idx_feedbacks_project_id ON feedbacks(project_id);
     CREATE INDEX IF NOT EXISTS idx_feedbacks_created_at ON feedbacks(created_at);
     CREATE INDEX IF NOT EXISTS idx_feedbacks_soft_delete ON feedbacks(soft_delete);
+
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id  INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      name        TEXT NOT NULL,
+      key_prefix  TEXT NOT NULL,
+      key_hash    TEXT NOT NULL UNIQUE,
+      is_admin    INTEGER NOT NULL DEFAULT 0,
+      draft       INTEGER NOT NULL DEFAULT 0,
+      soft_delete INTEGER NOT NULL DEFAULT 0,
+      last_used_at TEXT,
+      created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+      updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_api_keys_project_id ON api_keys(project_id);
+    CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);
 
     CREATE TABLE IF NOT EXISTS feedback_messages (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -112,4 +141,28 @@ function applySchema(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_notification_audit_session_id ON notification_audit(session_id);
     CREATE INDEX IF NOT EXISTS idx_notification_audit_created_at ON notification_audit(created_at);
   `);
+
+  const feedbackColumns = db
+    .prepare(`PRAGMA table_info(feedbacks)`)
+    .all() as Array<{ name: string }>;
+
+  const hasProjectId = feedbackColumns.some((col) => col.name === "project_id");
+  if (!hasProjectId) {
+    db.exec(`ALTER TABLE feedbacks ADD COLUMN project_id INTEGER REFERENCES projects(id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_feedbacks_project_id ON feedbacks(project_id)`);
+  }
+
+  const defaultProject = db
+    .prepare(`SELECT id FROM projects WHERE slug = ? LIMIT 1`)
+    .get("default") as { id: number } | undefined;
+
+  let defaultProjectId = defaultProject?.id;
+  if (!defaultProjectId) {
+    const inserted = db
+      .prepare(`INSERT INTO projects (slug, name) VALUES (?, ?) RETURNING id`)
+      .get("default", "Default Project") as { id: number };
+    defaultProjectId = inserted.id;
+  }
+
+  db.prepare(`UPDATE feedbacks SET project_id = ? WHERE project_id IS NULL`).run(defaultProjectId);
 }

@@ -44,11 +44,13 @@ if (FRESH) {
   console.log("🗑️   Dropping existing tables...");
   db.exec(`
     DROP TABLE IF EXISTS notification_audit;
+    DROP TABLE IF EXISTS api_keys;
     DROP TABLE IF EXISTS feedback_messages;
     DROP TABLE IF EXISTS feedbacks;
     DROP TABLE IF EXISTS feedback_status;
     DROP TABLE IF EXISTS feedback_types;
     DROP TABLE IF EXISTS organisations;
+    DROP TABLE IF EXISTS projects;
   `);
 }
 
@@ -58,6 +60,17 @@ if (FRESH) {
 console.log("🏗️   Applying schema...");
 
 db.exec(`
+  -- ── Projects ─────────────────────────────────────────────────────────────────
+  CREATE TABLE IF NOT EXISTS projects (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug        TEXT    NOT NULL UNIQUE,
+    name        TEXT    NOT NULL,
+    draft       INTEGER NOT NULL DEFAULT 0,
+    soft_delete INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    updated_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+  );
+
   -- ── Organisations ────────────────────────────────────────────────────────────
   CREATE TABLE IF NOT EXISTS organisations (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -101,6 +114,7 @@ db.exec(`
   -- ── Feedbacks ────────────────────────────────────────────────────────────────
   CREATE TABLE IF NOT EXISTS feedbacks (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id       INTEGER REFERENCES projects(id),
     email            TEXT    NOT NULL,
     submitter_ref    TEXT,
     clinical_site    INTEGER REFERENCES organisations(id),
@@ -120,8 +134,27 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_feedbacks_email       ON feedbacks(email);
+  CREATE INDEX IF NOT EXISTS idx_feedbacks_project_id  ON feedbacks(project_id);
   CREATE INDEX IF NOT EXISTS idx_feedbacks_created_at  ON feedbacks(created_at);
   CREATE INDEX IF NOT EXISTS idx_feedbacks_soft_delete ON feedbacks(soft_delete);
+
+  -- ── API keys ─────────────────────────────────────────────────────────────────
+  CREATE TABLE IF NOT EXISTS api_keys (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id   INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name         TEXT    NOT NULL,
+    key_prefix   TEXT    NOT NULL,
+    key_hash     TEXT    NOT NULL UNIQUE,
+    is_admin     INTEGER NOT NULL DEFAULT 0,
+    draft        INTEGER NOT NULL DEFAULT 0,
+    soft_delete  INTEGER NOT NULL DEFAULT 0,
+    last_used_at TEXT,
+    created_at   TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    updated_at   TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_api_keys_project_id ON api_keys(project_id);
+  CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);
 
   -- ── Feedback messages ────────────────────────────────────────────────────────
   CREATE TABLE IF NOT EXISTS feedback_messages (
@@ -152,6 +185,16 @@ db.exec(`
 `);
 
 console.log("✅  Schema applied.");
+
+const defaultProject = db
+  .prepare(`
+    INSERT INTO projects (slug, name) VALUES (?, ?)
+    ON CONFLICT(slug) DO UPDATE SET name = excluded.name
+    RETURNING id
+  `)
+  .get("default", "Default Project");
+db.prepare(`UPDATE feedbacks SET project_id = ? WHERE project_id IS NULL`).run(defaultProject.id);
+console.log("✅  Ensured default project.");
 
 // ─────────────────────────────────────────────
 // Seed reference data

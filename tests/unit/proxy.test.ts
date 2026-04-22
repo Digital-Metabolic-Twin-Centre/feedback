@@ -61,20 +61,6 @@ describe("Proxy Token Validation", () => {
         groups: ["/CLINICAL SITES/Site A"],
       });
 
-      // const mockRequest = {
-      //   nextUrl: { pathname: "/participant/registration" },
-      //   url: "http://localhost:3000/participant/registration",
-      //   headers: new Map([["origin", "http://localhost:3000"]]),
-      //   method: "GET",
-      //   nextauth: {
-      //     token: {
-      //       access_token: "expired_token",
-      //     },
-      //   },
-      //   cookies: {
-      //     delete: jest.fn(),
-      //   },
-      // } as unknown as NextRequest;
 
       // In real proxy, this would trigger a redirect
       // We're testing the token expiration check logic

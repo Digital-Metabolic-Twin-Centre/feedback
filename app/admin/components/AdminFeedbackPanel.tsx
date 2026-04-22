@@ -1,3 +1,4 @@
+// reference implementation - see src/ for the npm package version
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
