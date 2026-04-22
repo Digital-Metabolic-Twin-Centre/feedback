@@ -1,11 +1,13 @@
+import packageJson from "@/package.json";
+
 export function feedbackOpenApiSpec(baseUrl?: string) {
   const serverUrl = baseUrl || "http://localhost:3000";
 
   return {
     openapi: "3.0.3",
     info: {
-      title: "Feedback API",
-      version: "1.0.0",
+      title: "DMTC Feedback API",
+      version: packageJson.version,
       description: "Versioned REST API for feedback submission and admin workflows.",
     },
     servers: [{ url: serverUrl }],

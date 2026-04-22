@@ -1,6 +1,6 @@
 {
   "name": "feedbacks-dmtc",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "scripts": {
     "dev": "NODE_ENV=development NEXT_DISABLE_TURBOPACK=1 next dev --webpack -p 3000",
     "build": "NODE_ENV=production next build",

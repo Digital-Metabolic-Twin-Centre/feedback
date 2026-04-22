@@ -4,7 +4,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
-           <h1>API is running</h1>
+           <h1>DMTC Feedback API is running</h1>
       <p>See /api/v1/docs for documentation</p>
       </body>
     </html>
