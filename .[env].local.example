@@ -1,0 +1,64 @@
+########################################
+# Runtime mode
+########################################
+NODE_ENV=production
+MAINTENANCE_MODE=true
+
+
+########################################
+# PostgreSQL (used by docker-compose)
+########################################
+POSTGRES_USER=demo_user
+POSTGRES_PASSWORD=demo_password
+POSTGRES_DB=demo_db
+
+DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public&sslmode=disable
+
+
+########################################
+# NextAuth / App URLs
+########################################
+NEXTAUTH_URL=https://beta.imdhub.org
+NEXT_PUBLIC_APP_URL=https://beta.imdhub.org
+COOKIE_DOMAIN=beta.imdhub.org
+
+NEXTAUTH_SECRET=demo_nextauth_secret
+LOGOUT_REDIRECT_CLOUD=url_for_the_next_cloud_file_manager
+
+
+########################################
+# Docker volume (CRITICAL)
+########################################
+# MUST match docker-compose.yml
+UPLOADS_VOLUME=beta-imdhub_uploads_data
+
+
+########################################
+# Monitoring / Reporting
+########################################
+GITLAB_ISSUES_REPORTING_TOKEN=demo_token
+GITLAB_REPORTING_PROJECT_ID=demo_project_id
+
+
+########################################
+# Redis (optional for distributed API rate limiting)
+########################################
+REDIS_URL=redis://localhost:6379
+
+
+########################################
+# Email if using smtp e.g. gmail 
+########################################
+MAIL_PROVIDER=smtp or gmail or disabled 
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=email@gmail.com
+SMTP_PASS=demo_smtp_password
+SMTP_FROM="IMDhub <noreply@imdhub.org>"
+
+
+########################################
+# Email if using resend
+########################################
+RESEND_API_KEY
