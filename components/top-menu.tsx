@@ -5,9 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { SITE_PATHS } from "@/lib/urls";
-import { useClientSession } from "@/utils/auth/get-user-client-session";
-import SignInButton from "@/layout/SignInButton";
-import SignOutButton from "@/layout/SignOutButton";
+import { useAdminIdentity } from "@/hooks/use-admin-identity";
 
 type TopMenuProps = {
   title: string;
@@ -22,14 +20,13 @@ export default function TopMenu({
 }: TopMenuProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { hasValidSession, getUserEmail } = useClientSession();
-  const isValid = hasValidSession();
-  const userEmail = getUserEmail();
+  const [emailInput, setEmailInput] = useState("");
+  const [identityOpen, setIdentityOpen] = useState(false);
+  const { email, isAdmin, identify, clearIdentity, mounted } = useAdminIdentity();
 
   const links = [
     { label: "Home", href: SITE_PATHS.HOMEPAGE },
     { label: "Feedbacks", href: SITE_PATHS.FEEDBACKS },
-    { label: "Admin", href: SITE_PATHS.ADMIN },
   ];
 
   return (
@@ -96,12 +93,67 @@ export default function TopMenu({
           </nav>
         ) : null}
 
-        {!hideAuthButtons ? (
+        {!hideAuthButtons && mounted ? (
           <div className="mt-3 flex flex-wrap items-center gap-3 border-t pt-3 text-sm text-slate-600">
-            <span>
-              {isValid && userEmail ? `Signed in as ${userEmail}` : "Public access"}
-            </span>
-            {isValid && userEmail ? <SignOutButton /> : <SignInButton />}
+            {email ? (
+              <>
+                <span>
+                  {email}
+                  {isAdmin && (
+                    <span className="ml-2 rounded-full bg-cyan-100 px-2 py-0.5 text-xs font-medium text-cyan-700">
+                      Admin
+                    </span>
+                  )}
+                </span>
+                <button
+                  onClick={clearIdentity}
+                  className="text-xs text-slate-400 underline hover:text-slate-700"
+                >
+                  Clear
+                </button>
+              </>
+            ) : identityOpen ? (
+              <form
+                className="flex items-center gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (emailInput) {
+                    identify(emailInput);
+                    setEmailInput("");
+                    setIdentityOpen(false);
+                  }
+                }}
+              >
+                <input
+                  type="email"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  placeholder="your@email.com"
+                  className="rounded border border-slate-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-slate-300"
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  className="text-sm text-cyan-700 hover:underline"
+                >
+                  Continue
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIdentityOpen(false)}
+                  className="text-xs text-slate-400 hover:underline"
+                >
+                  Cancel
+                </button>
+              </form>
+            ) : (
+              <button
+                onClick={() => setIdentityOpen(true)}
+                className="text-xs text-slate-500 underline hover:text-slate-700"
+              >
+                Identify yourself
+              </button>
+            )}
           </div>
         ) : null}
       </div>

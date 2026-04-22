@@ -8,10 +8,12 @@ import Loading from "@/app/loading";
 import { TableSelectorAddNew } from "@/components/hub/TableSelectorAddNew";
 import { secureFetch } from "@/hooks/secure-fetch";
 import { API_ENDPOINTS } from "@/lib/urls";
+import { useAdminIdentity } from "@/hooks/use-admin-identity";
 
 export default function TableSelector({ tables }: { tables: string[] }) {
   const [data, setData] = useState<FeedbackData[] | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const { email: identityEmail } = useAdminIdentity();
 
   const {
     selectedTable,
@@ -41,6 +43,10 @@ export default function TableSelector({ tables }: { tables: string[] }) {
           page: String(pageIndex + 1),
           pageSize: String(pageSize),
         });
+
+        if (identityEmail) {
+          params.set("__session_email", identityEmail);
+        }
 
         if (softDeleteFilter === "Trashed") {
           params.set("soft_delete", "true");
@@ -75,7 +81,7 @@ export default function TableSelector({ tables }: { tables: string[] }) {
         setLoadingStatus("idle");
       }
     },
-    [hasLoadedOnce, setLoadingStatus, setErrorMessage, setData, setTotalRows, softDeleteFilter]
+    [hasLoadedOnce, setLoadingStatus, setErrorMessage, setData, setTotalRows, softDeleteFilter, identityEmail]
   );
 
   useEffect(() => {

@@ -78,9 +78,18 @@ export function selectFeedbacks(
   groups: string[] = [],
   pagination?: { page: number; pageSize: number }
 ): { data: FeedbackData[]; total: number } {
-  const isAdmin = groups
-    .map((g) => g.toLowerCase().trim())
-    .includes(ADMIN_GROUP_VIEW_PERMISSIONS.toLowerCase().trim());
+  const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  const sessionEmail = (filters.__session_email ?? "").trim().toLowerCase();
+
+  const isAdmin =
+    groups
+      .map((g) => g.toLowerCase().trim())
+      .includes(ADMIN_GROUP_VIEW_PERMISSIONS.toLowerCase().trim()) ||
+    (sessionEmail.length > 0 && adminEmails.includes(sessionEmail));
 
   const whereClauses: string[] = [];
   const params: unknown[] = [];

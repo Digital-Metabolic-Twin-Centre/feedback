@@ -40,9 +40,8 @@ import { secureFetch } from "@/hooks/secure-fetch";
 import { API_ENDPOINTS } from "@/lib/urls";
 import { useCustomFormWatch } from "@/hooks/use-form-value-watch";
 import { ForeignOption } from "@/types/common";
-import { useClientSession } from "@/utils/auth/get-user-client-session";
+import { useAdminIdentity } from "@/hooks/use-admin-identity";
 import { usePathname } from "next/navigation";
-import { ADMIN_GROUP_VIEW_PERMISSIONS } from "@/lib/permissions";
 import { Textarea } from "@/components/ui/textarea";
 import { FeedbackCommentContent } from "../utils/comment-rich-text";
 import {
@@ -71,9 +70,8 @@ export default function FeedbackForm({
   const isEditMode = Boolean(initialValues);
   const pathname = usePathname();
 
-  const { getUserEmail, getUserGroups } = useClientSession();
-  const userEmail = getUserEmail();
-  const isAdmin = getUserGroups().includes(ADMIN_GROUP_VIEW_PERMISSIONS);
+  const { email: identityEmail, isAdmin } = useAdminIdentity();
+  const userEmail = identityEmail;
 
   const { loadingStatus, setLoadingStatus, setErrorMessage } =
     useSharedFormState();
@@ -113,6 +111,13 @@ export default function FeedbackForm({
   const {
     formState: { isSubmitting },
   } = form;
+
+  // Auto-fill email from the localStorage identity once it loads (create mode only)
+  useEffect(() => {
+    if (!isEditMode && identityEmail && !form.getValues("email")) {
+      form.setValue("email", identityEmail, { shouldValidate: true });
+    }
+  }, [identityEmail, isEditMode, form]);
 
   const { value: isDraft } = useCustomFormWatch(form, "draft");
 

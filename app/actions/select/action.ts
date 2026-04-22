@@ -6,7 +6,7 @@ import {
   isSecurityCritical,
   logError,
 } from "@/lib/error-logger";
-import { selectFeedbacks } from "@/lib/feedback/sqlite-queries";
+import { selectFeedbacks, getFeedbackTypes, getFeedbackStatuses, getOrganisations } from "@/lib/feedback/sqlite-queries";
 import { SELECT_QUERY_REGISTRY } from "@/lib/queries/select";
 import { getUserEmailFromSession } from "@/utils/auth/get-user-server-session";
 
@@ -46,6 +46,21 @@ export async function getTableData(
     try {
       const { data, total } = selectFeedbacks(filters, groups, pagination);
       return { success: true, data, meta: { total } };
+    } catch (err) {
+      return { success: false, message: getUserFriendlyMessage(err) };
+    }
+  }
+
+  // These reference tables live in SQLite alongside feedbacks
+  const sqliteTables: Record<string, () => unknown[]> = {
+    organisations:   () => getOrganisations(filters),
+    feedback_types:  () => getFeedbackTypes(),
+    feedback_status: () => getFeedbackStatuses(),
+  };
+  if (sqliteTables[tableName]) {
+    try {
+      const data = sqliteTables[tableName]();
+      return { success: true, data };
     } catch (err) {
       return { success: false, message: getUserFriendlyMessage(err) };
     }
