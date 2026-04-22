@@ -5,24 +5,10 @@
     "dev": "NODE_ENV=development next dev -p 3000",
     "build": "NODE_ENV=production next build",
     "start": "NODE_ENV=production next start",
-    "test": "jest",
-    "test:watch": "jest --watch",
     "lint": "eslint .",
-    "migrate:create": "dotenv -e .env.local -- node-pg-migrate create --migrations-schema=imdhub_migration_meta --create-migrations-schema",
-    "migrate:up": "dotenv -e .env.local -- node-pg-migrate up --migrations-schema=imdhub_migration_meta --create-migrations-schema",
-    "migrate:down": "dotenv -e .env.local -- node-pg-migrate down --migrations-schema=imdhub_migration_meta --create-migrations-schema",
-    "migrate:prod-up": "node-pg-migrate up --migrations-schema=imdhub_migration_meta --create-migrations-schema --database-url=$DATABASE_URL",
     "migrate:sqlite": "node scripts/migrate-sqlite.mjs",
     "migrate:sqlite:seed": "node scripts/migrate-sqlite.mjs --seed",
-    "migrate:sqlite:fresh": "node scripts/migrate-sqlite.mjs --fresh",
-    "seed": "node seeders/runner.js",
-    "seed:list": "node seeders/runner.js list",
-    "seed:all": "node seeders/runner.js seed-all",
-    "seed:rollback-all": "node seeders/runner.js rollback-all",
-    "seed:participant-registration-seeder": "node seeders/runner.js seed participant-registration-seeder",
-    "seed:participant-registration-seeder:rollback": "node seeders/runner.js rollback participant-registration-seeder",
-    "build:lib": "tsup",
-    "dev:lib": "tsup --watch"
+    "migrate:sqlite:fresh": "node scripts/migrate-sqlite.mjs --fresh"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",
@@ -150,30 +136,12 @@
   "overrides": {
     "nodemailer": "8.0.5"
   },
-  "description": "Embeddable feedback widget and admin panel for React apps",
+  "description": "Headless feedback management API service",
   "keywords": [
     "feedback",
-    "react",
-    "widget",
-    "admin"
+    "api",
+    "headless",
+    "nextjs"
   ],
-  "license": "MIT",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    },
-    "./styles": "./dist/styles/feedback.css"
-  },
-  "files": [
-    "dist"
-  ],
-  "peerDependencies": {
-    "react": ">=18",
-    "react-dom": ">=18"
-  }
+  "license": "MIT"
 }

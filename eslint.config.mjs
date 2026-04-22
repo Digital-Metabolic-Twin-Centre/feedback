@@ -11,15 +11,12 @@ const compat = new FlatCompat({
 });
 
 export default defineConfig([
-  // Next.js recommended + TypeScript rules
   ...compat.extends("next/core-web-vitals", "next/typescript"),
 
-  // VERY IMPORTANT: tell ESLint which files to lint
   {
-    files: ["src/**/*.{js,jsx,ts,tsx}", "app/**/*.{js,jsx,ts,tsx}"],
+    files: ["app/**/*.{js,jsx,ts,tsx}", "lib/**/*.{js,jsx,ts,tsx}", "scripts/**/*.{js,mjs}"],
   },
 
-  // VERY IMPORTANT: ignore all heavy folders
   globalIgnores([
     ".next/**",
     "out/**",
@@ -27,21 +24,17 @@ export default defineConfig([
     "dist/**",
     "coverage/**",
     "node_modules/**",
-    "public/**",
-    "seeders/**",
-    "migrations/**",
-    "prisma/**",
+    "data/**",
   ]),
-    {
+
+  {
     files: [
-      "jest.config.js",
-      "jest.config.cjs",
       "next.config.js",
+      "next.config.ts",
       "next.config.mjs",
-      "tailwind.config.js",
-      "postcss.config.js",
       "*.config.js",
       "*.config.cjs",
+      "*.config.mjs",
     ],
     languageOptions: {
       sourceType: "commonjs",
@@ -51,5 +44,4 @@ export default defineConfig([
       "import/no-commonjs": "off",
     },
   },
-
 ]);

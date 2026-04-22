@@ -8,7 +8,7 @@
 import { feedbackDb as db } from "@/lib/db-sqlite";
 import { deriveSubmitterRef } from "@/lib/feedback/submitter-ref";
 import { ADMIN_GROUP_VIEW_PERMISSIONS } from "@/lib/permissions";
-import type { FeedbackData, FeedbackThreadMessage } from "@/app/feedbacks/types/feedback-types";
+import type { FeedbackData, FeedbackThreadMessage } from "@/lib/feedback/types";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

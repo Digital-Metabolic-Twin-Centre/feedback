@@ -1,28 +1,3 @@
-import { FeedbackFormData } from "../validation/schema";
-
-/**
- * Props for Feedback create / edit form
- */
-export interface FeedbackFormProps {
-  initialValues?: Partial<FeedbackFormData>;
-  onClose?: () => void;
-  refetchTable?: () => void;
-}
-
-/**
- * Generic foreign item
- */
-export type ForeignItem = {
-  id: number | string;
-  name?: string;
-  label?: string;
-  code?: string;
-  order?: number | string;
-};
-
-/**
- * Row shape returned from SELECT imdhub_core.feedbacks
- */
 export interface FeedbackData {
   id: number;
   project_id?: number | null;
