@@ -134,7 +134,6 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_feedbacks_email       ON feedbacks(email);
-  CREATE INDEX IF NOT EXISTS idx_feedbacks_project_id  ON feedbacks(project_id);
   CREATE INDEX IF NOT EXISTS idx_feedbacks_created_at  ON feedbacks(created_at);
   CREATE INDEX IF NOT EXISTS idx_feedbacks_soft_delete ON feedbacks(soft_delete);
 
@@ -185,6 +184,16 @@ db.exec(`
 `);
 
 console.log("✅  Schema applied.");
+
+const feedbackColumns = db
+  .prepare(`PRAGMA table_info(feedbacks)`)
+  .all();
+
+const hasProjectId = feedbackColumns.some((col) => col.name === "project_id");
+if (!hasProjectId) {
+  db.exec(`ALTER TABLE feedbacks ADD COLUMN project_id INTEGER REFERENCES projects(id)`);
+}
+db.exec(`CREATE INDEX IF NOT EXISTS idx_feedbacks_project_id ON feedbacks(project_id)`);
 
 const defaultProject = db
   .prepare(`

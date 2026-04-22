@@ -58,6 +58,7 @@ next-env.d.ts
 .copilot
 
 # SQLite temp files
+*.db
 *.db-wal
 *.db-shm
 
