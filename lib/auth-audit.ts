@@ -1,7 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
-import { logAuthEvent } from "@/app/actions/admin/audit/auth/action";
+import { pgPool } from "@/lib/db";
 
 type AuthAuditParams = {
     event: "LOGIN" | "LOGOUT" | "FORCED_LOGOUT" | "SESSION_EXPIRED";
@@ -72,4 +72,28 @@ export async function auditAuthEvent({
         ip,
         userAgent: resolvedUserAgent,
     });
+}
+
+async function logAuthEvent({
+    userId,
+    sessionId,
+    event,
+    ip,
+    userAgent,
+}: {
+    userId: string;
+    sessionId: string;
+    event: string;
+    ip: string;
+    userAgent: string;
+}) {
+    try {
+        await pgPool.query(
+            `INSERT INTO imdhub_logs.auth_sessions (user_id, event, session_id, ip_address, user_agent)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [userId, event, sessionId, ip, userAgent],
+        );
+    } catch {
+        // Non-fatal — never block auth flow due to audit logging failure
+    }
 }

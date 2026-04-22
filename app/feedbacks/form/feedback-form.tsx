@@ -540,11 +540,7 @@ export default function FeedbackForm({
     const isCommentField =
       fieldKey === "initial_message" || fieldKey === "admin_reply_message";
     const isAdminCommentField = fieldKey === "admin_reply_message";
-    const isUserLockedCreateField =
-      !isAdmin &&
-      !isEditMode &&
-      ["email", "clinical_site", "page"].includes(fieldKey);
-    const isReadOnlyField = isReplyOnlyMode || isUserLockedCreateField;
+    const isReadOnlyField = isReplyOnlyMode;
     const isLockedPromotedField =
       fieldKey === "promote" &&
       (initialValues?.promote === true || form.getValues("promote") === true);
