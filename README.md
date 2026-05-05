@@ -1,48 +1,75 @@
-# feedback Headless API
+# Feedback Headless API
 
 Headless feedback management backend built with Next.js route handlers and SQLite.
 
-## Features
+## Overview
 
 - Versioned REST API under `/api/v1/*`
-- API key authentication (`x-api-key`) with hashed keys stored in SQLite
-- Optional multi-project isolation (one deployment, many consumers)
-- Admin-only actions scoped by admin API keys
-- OpenAPI spec + Swagger UI docs
-- Healthcheck endpoint for monitoring
+- Project-scoped API keys via `x-api-key`
+- Bootstrap-token protected admin key and project management
+- Feedback thread support with initial and follow-up messages
+- OpenAPI JSON and Swagger UI docs
+- SQLite-backed storage with hashed API keys
 
-## Available Routes
+## Route Map
+
+### Platform
 
 - `GET /api/healthcheck`
-- `GET /api/v1/admin/keys` (bootstrap token protected)
-- `POST /api/v1/admin/keys` (bootstrap token protected)
-- `DELETE /api/v1/admin/keys/:id` (bootstrap token protected)
-- `POST /api/v1/admin/keys/:id/rotate` (bootstrap token protected)
-- `GET /api/v1/admin/projects` (bootstrap token protected)
-- `POST /api/v1/admin/projects` (bootstrap token protected)
 - `GET /api/v1/openapi.json`
 - `GET /api/v1/docs`
-- `POST /api/v1/feedback` (API key)
-- `GET /api/v1/feedback/:id` (API key, project scoped)
-- `GET /api/v1/feedback/meta` (API key)
-- `GET /api/v1/admin/feedback` (admin API key)
-- `GET /api/v1/admin/feedback/:id` (admin API key)
-- `GET /api/v1/admin/feedback/:id/messages` (admin API key)
-- `POST /api/v1/admin/feedback/:id/messages` (admin API key)
-- `PATCH /api/v1/admin/feedback/:id` (admin API key)
+
+### Bootstrap-Protected Admin Setup
+
+- `GET /api/v1/admin/keys`
+- `POST /api/v1/admin/keys`
+- `DELETE /api/v1/admin/keys/:id`
+- `POST /api/v1/admin/keys/:id/rotate`
+- `GET /api/v1/admin/projects`
+- `POST /api/v1/admin/projects`
+
+These routes require `x-bootstrap-token`.
+
+### Project API Key Routes
+
+- `POST /api/v1/feedback`
+- `GET /api/v1/feedback/:id`
+- `POST /api/v1/feedback/:id`
+- `GET /api/v1/feedback/meta`
+
+These routes require `x-api-key`. Access is scoped to the project attached to the key.
+
+### Admin API Key Routes
+
+- `GET /api/v1/admin/feedback`
+- `GET /api/v1/admin/feedback/:id`
+- `PATCH /api/v1/admin/feedback/:id`
+- `GET /api/v1/admin/feedback/:id/messages`
+- `POST /api/v1/admin/feedback/:id/messages`
+
+These routes require an API key created with `isAdmin: true`.
 
 ## Auth Model
 
-- `x-api-key` is required for all `/api/v1/feedback*` and `/api/v1/admin/feedback*` routes.
-- Admin operations require an API key created with `isAdmin: true`.
-- API keys are project-bound; feedback data is isolated by `project_id`.
-- Initial key creation uses `x-bootstrap-token` on `POST /api/v1/admin/keys`.
-- Key listing uses `x-bootstrap-token` on `GET /api/v1/admin/keys`.
-- Key revocation uses `x-bootstrap-token` on `DELETE /api/v1/admin/keys/:id`.
+- `x-bootstrap-token` is only for bootstrap and platform management routes under `/api/v1/admin/keys*` and `/api/v1/admin/projects*`.
+- `x-api-key` is required for feedback and admin-feedback routes.
+- API keys are tied to a single project.
+- Admin API keys can use both project routes and admin routes for their project.
+- Non-admin API keys cannot call `/api/v1/admin/feedback*`.
+
+## Thread Model
+
+Feedback creation and thread replies are separate operations.
+
+- `POST /api/v1/feedback` creates the feedback row.
+- If `initial_message` is supplied during creation, it is inserted as the first thread message with author role `User`.
+- `POST /api/v1/feedback/:id` adds a later user follow-up message to the same thread.
+- `POST /api/v1/admin/feedback/:id/messages` adds an admin reply.
+- Closed feedback cannot accept new replies.
 
 ## Environment
 
-Create `.env.local` (or copy from `.env.local.example`) with at least:
+Create `.env.local` with at least:
 
 ```env
 NODE_ENV=development
@@ -52,11 +79,6 @@ NEXTAUTH_URL=http://localhost:4001
 NEXTAUTH_SECRET=<openssl rand -base64 32>
 FEEDBACK_BOOTSTRAP_TOKEN=<openssl rand -hex 24>
 MAIL_PROVIDER=disabled
-```
-
-SQLite defaults to:
-
-```env
 SQLITE_PATH=./data/feedback.db
 ```
 
@@ -68,7 +90,7 @@ npm run migrate:sqlite-seed
 npm run dev
 ```
 
-If you hit stale `.next`/manifest issues:
+If you hit stale `.next` issues:
 
 ```bash
 pkill -f "next dev" || true
@@ -76,7 +98,9 @@ npm run clean
 npm run dev
 ```
 
-## Generate Your First Admin API Key
+## Bootstrap Setup
+
+Create an admin API key:
 
 ```bash
 curl -X POST http://localhost:4001/api/v1/admin/keys \
@@ -85,7 +109,14 @@ curl -X POST http://localhost:4001/api/v1/admin/keys \
   -d '{"projectSlug":"default","projectName":"Default Project","keyName":"admin","isAdmin":true}'
 ```
 
-`projectSlug` is optional. If you omit it, the API uses the first active project. `isAdmin` is also optional and defaults to `false`.
+Key creation fields:
+
+- `projectSlug` optional
+- `projectName` optional
+- `keyName` optional
+- `isAdmin` optional, defaults to `false`
+
+If `projectSlug` is omitted, the API uses the first active project. If no active project exists, the default project is used/created.
 
 Use the returned key as:
 
@@ -93,28 +124,28 @@ Use the returned key as:
 x-api-key: fbk_...
 ```
 
-Revoke an API key by id:
-
-```bash
-curl -X DELETE http://localhost:4001/api/v1/admin/keys/1 \
-  -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN"
-```
-
-Rotate an API key by id:
-
-```bash
-curl -X POST http://localhost:4001/api/v1/admin/keys/1/rotate \
-  -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN"
-```
-
-List API keys:
+List keys:
 
 ```bash
 curl "http://localhost:4001/api/v1/admin/keys?includeRevoked=false" \
   -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN"
 ```
 
-Create project:
+Rotate a key:
+
+```bash
+curl -X POST http://localhost:4001/api/v1/admin/keys/1/rotate \
+  -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN"
+```
+
+Revoke a key:
+
+```bash
+curl -X DELETE http://localhost:4001/api/v1/admin/keys/1 \
+  -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN"
+```
+
+Create a project:
 
 ```bash
 curl -X POST http://localhost:4001/api/v1/admin/projects \
@@ -130,25 +161,61 @@ curl "http://localhost:4001/api/v1/admin/projects" \
   -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN"
 ```
 
-## Quick API Examples
+## Feedback API Examples
 
-Create feedback:
+Create feedback with an initial thread message:
 
 ```bash
 curl -X POST http://localhost:4001/api/v1/feedback \
   -H "Content-Type: application/json" \
   -H "x-api-key: $API_KEY" \
-  -d '{"email":"user@example.com","page":"/home","initial_message":"Great app"}'
+  -d '{
+    "email":"user@example.com",
+    "page":"/home",
+    "initial_message":"Great app"
+  }'
 ```
 
-List feedback (admin key):
+Get feedback detail with messages:
+
+```bash
+curl "http://localhost:4001/api/v1/feedback/1?includeMessages=true" \
+  -H "x-api-key: $API_KEY"
+```
+
+Add a user follow-up message:
+
+```bash
+curl -X POST http://localhost:4001/api/v1/feedback/1 \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{"message":"I have more details to add."}'
+```
+
+Get feedback form metadata:
+
+```bash
+curl "http://localhost:4001/api/v1/feedback/meta" \
+  -H "x-api-key: $API_KEY"
+```
+
+## Admin Feedback Examples
+
+List feedback:
 
 ```bash
 curl "http://localhost:4001/api/v1/admin/feedback?page=1&pageSize=50" \
   -H "x-api-key: $ADMIN_API_KEY"
 ```
 
-Update feedback status (admin key):
+Get feedback detail:
+
+```bash
+curl "http://localhost:4001/api/v1/admin/feedback/1" \
+  -H "x-api-key: $ADMIN_API_KEY"
+```
+
+Update feedback:
 
 ```bash
 curl -X PATCH http://localhost:4001/api/v1/admin/feedback/1 \
@@ -157,14 +224,14 @@ curl -X PATCH http://localhost:4001/api/v1/admin/feedback/1 \
   -d '{"action":"status","value":2}'
 ```
 
-Get feedback detail (project key):
+List thread messages:
 
 ```bash
-curl "http://localhost:4001/api/v1/feedback/1?includeMessages=true" \
-  -H "x-api-key: $API_KEY"
+curl "http://localhost:4001/api/v1/admin/feedback/1/messages" \
+  -H "x-api-key: $ADMIN_API_KEY"
 ```
 
-Add admin thread message:
+Add an admin reply:
 
 ```bash
 curl -X POST http://localhost:4001/api/v1/admin/feedback/1/messages \
