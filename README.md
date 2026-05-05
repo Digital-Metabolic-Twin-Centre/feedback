@@ -46,9 +46,9 @@ Create `.env.local` (or copy from `.env.local.example`) with at least:
 
 ```env
 NODE_ENV=development
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_FEEDBACK_API_URL=http://localhost:3000
-NEXTAUTH_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:4001
+NEXT_PUBLIC_FEEDBACK_API_URL=http://localhost:4001
+NEXTAUTH_URL=http://localhost:4001
 NEXTAUTH_SECRET=<openssl rand -base64 32>
 FEEDBACK_BOOTSTRAP_TOKEN=<openssl rand -hex 24>
 MAIL_PROVIDER=disabled
@@ -79,7 +79,7 @@ npm run dev
 ## Generate Your First Admin API Key
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/admin/keys \
+curl -X POST http://localhost:4001/api/v1/admin/keys \
   -H "Content-Type: application/json" \
   -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN" \
   -d '{"projectSlug":"default","projectName":"Default Project","keyName":"admin","isAdmin":true}'
@@ -94,28 +94,28 @@ x-api-key: fbk_...
 Revoke an API key by id:
 
 ```bash
-curl -X DELETE http://localhost:3000/api/v1/admin/keys/1 \
+curl -X DELETE http://localhost:4001/api/v1/admin/keys/1 \
   -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN"
 ```
 
 Rotate an API key by id:
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/admin/keys/1/rotate \
+curl -X POST http://localhost:4001/api/v1/admin/keys/1/rotate \
   -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN"
 ```
 
 List API keys:
 
 ```bash
-curl "http://localhost:3000/api/v1/admin/keys?includeRevoked=false" \
+curl "http://localhost:4001/api/v1/admin/keys?includeRevoked=false" \
   -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN"
 ```
 
 Create project:
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/admin/projects \
+curl -X POST http://localhost:4001/api/v1/admin/projects \
   -H "Content-Type: application/json" \
   -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN" \
   -d '{"slug":"project-alpha","name":"Project Alpha"}'
@@ -124,7 +124,7 @@ curl -X POST http://localhost:3000/api/v1/admin/projects \
 List projects:
 
 ```bash
-curl "http://localhost:3000/api/v1/admin/projects" \
+curl "http://localhost:4001/api/v1/admin/projects" \
   -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN"
 ```
 
@@ -133,7 +133,7 @@ curl "http://localhost:3000/api/v1/admin/projects" \
 Create feedback:
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/feedbacks \
+curl -X POST http://localhost:4001/api/v1/feedbacks \
   -H "Content-Type: application/json" \
   -H "x-api-key: $API_KEY" \
   -d '{"email":"user@example.com","page":"/home","initial_message":"Great app"}'
@@ -142,14 +142,14 @@ curl -X POST http://localhost:3000/api/v1/feedbacks \
 List feedbacks (admin key):
 
 ```bash
-curl "http://localhost:3000/api/v1/admin/feedbacks?page=1&pageSize=50" \
+curl "http://localhost:4001/api/v1/admin/feedbacks?page=1&pageSize=50" \
   -H "x-api-key: $ADMIN_API_KEY"
 ```
 
 Update feedback status (admin key):
 
 ```bash
-curl -X PATCH http://localhost:3000/api/v1/admin/feedbacks/1 \
+curl -X PATCH http://localhost:4001/api/v1/admin/feedbacks/1 \
   -H "Content-Type: application/json" \
   -H "x-api-key: $ADMIN_API_KEY" \
   -d '{"action":"status","value":2}'
@@ -158,14 +158,14 @@ curl -X PATCH http://localhost:3000/api/v1/admin/feedbacks/1 \
 Get feedback detail (project key):
 
 ```bash
-curl "http://localhost:3000/api/v1/feedbacks/1?includeMessages=true" \
+curl "http://localhost:4001/api/v1/feedbacks/1?includeMessages=true" \
   -H "x-api-key: $API_KEY"
 ```
 
 Add admin thread message:
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/admin/feedbacks/1/messages \
+curl -X POST http://localhost:4001/api/v1/admin/feedbacks/1/messages \
   -H "Content-Type: application/json" \
   -H "x-api-key: $ADMIN_API_KEY" \
   -d '{"message":"Thanks, this is now being worked on."}'
@@ -173,5 +173,5 @@ curl -X POST http://localhost:3000/api/v1/admin/feedbacks/1/messages \
 
 ## Docs
 
-- OpenAPI JSON: `http://localhost:3000/api/v1/openapi.json`
-- Swagger UI: `http://localhost:3000/api/v1/docs`
+- OpenAPI JSON: `http://localhost:4001/api/v1/openapi.json`
+- Swagger UI: `http://localhost:4001/api/v1/docs`

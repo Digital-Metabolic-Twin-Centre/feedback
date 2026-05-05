@@ -14,7 +14,7 @@ jobs:
 
     env: # inject dummy safe env values
       NEXTAUTH_SECRET: "devsecretdevsecretdevsecretdevse" # must be >=32 chars
-      NEXTAUTH_URL: "http://localhost:3000"
+      NEXTAUTH_URL: "http://localhost:4001"
       KEYCLOAK_DOMAIN: "http://localhost:8080"
       
       KEYCLOAK_END_SESSION_URL: "dummy"

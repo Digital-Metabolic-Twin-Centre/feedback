@@ -1,7 +1,7 @@
 import packageJson from "@/package.json";
 
 export function feedbackOpenApiSpec(baseUrl?: string) {
-  const serverUrl = baseUrl || "http://localhost:3000";
+  const serverUrl = baseUrl || "http://localhost:4001";
 
   return {
     openapi: "3.0.3",

@@ -36,17 +36,12 @@ ENV SKIP_ENV_VALIDATION=true
 
 # Dummy environment values to satisfy Zod / env validation during build
 ENV NEXTAUTH_SECRET="dummy-secret-for-build-only"
-ENV NEXTAUTH_URL="http://localhost:3000"
-ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
-ENV KEYCLOAK_REALM="dummy"
-ENV KEYCLOAK_CLIENT_ID="dummy"
-ENV KEYCLOAK_DOMAIN="http://localhost:8080"
-ENV KEYCLOAK_ISSUER_URL="http://localhost:8080/realms/dummy"
-ENV KEYCLOAK_JWKS_URI="http://localhost:8080/realms/dummy/protocol/openid-connect/certs"
-ENV KEYCLOAK_CLIENT_SECRET="dummy"
-ENV CENTRAL_RESOURCES_FOLDER_ID="dummy"
-ENV GOOGLE_SERVICE_ACCOUNT_EMAIL="dummy@dummy.iam.gserviceaccount.com"
-ENV GOOGLE_PRIVATE_KEY="dummy"
+ENV NEXTAUTH_URL="http://localhost:4001"
+ENV NEXT_PUBLIC_APP_URL="http://localhost:4001"
+ENV NEXT_PUBLIC_FEEDBACK_API_URL="http://localhost:4001"
+ENV FEEDBACK_BOOTSTRAP_TOKEN="dummy-bootstrap-token"
+ENV SQLITE_PATH="./data/feedback.db"
+ENV MAIL_PROVIDER="disabled"
 ENV SMTP_HOST="localhost"
 ENV SMTP_PORT="25"
 ENV SMTP_USER="dummy"
@@ -70,16 +65,16 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 
 # Install runtime utilities
-RUN apk add --no-cache bash curl postgresql-client
+RUN apk add --no-cache bash curl
 
 # Copy only required artifacts
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/next.config.ts ./next.config.ts
-COPY --from=builder /app/lib/security ./lib/security
-COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/migrations ./migrations 
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/lib ./lib
+COPY --from=builder /app/data ./data
 
 # Copy entrypoint
 COPY entrypoint.sh ./entrypoint.sh
@@ -92,5 +87,5 @@ ENV NODE_ENV=production
 # GitLab / Docker runtime will inject this automatically
 # e.g., docker run -e NEXTAUTH_SECRET=$NEXTAUTH_SECRET image
 
-EXPOSE 3000
+EXPOSE 4001
 ENTRYPOINT ["./entrypoint.sh"]

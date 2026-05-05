@@ -5,8 +5,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 process.env.NODE_ENV = "test";
 process.env.FEEDBACK_BOOTSTRAP_TOKEN = "bootstrap-test-token";
-process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
-process.env.NEXT_PUBLIC_FEEDBACK_API_URL = "http://localhost:3000";
+process.env.NEXT_PUBLIC_APP_URL = "http://localhost:4001";
+process.env.NEXT_PUBLIC_FEEDBACK_API_URL = "http://localhost:4001";
 process.env.SQLITE_PATH = "./data/feedback-test.db";
 process.env.MAIL_PROVIDER = "disabled";
 

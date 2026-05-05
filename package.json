@@ -2,9 +2,9 @@
   "name": "feedbacks-dmtc",
   "version": "0.4.0",
   "scripts": {
-    "dev": "NODE_ENV=development NEXT_DISABLE_TURBOPACK=1 next dev --webpack -p 3000",
+    "dev": "NODE_ENV=development NEXT_DISABLE_TURBOPACK=1 next dev --webpack -p 4001",
     "build": "NODE_ENV=production next build",
-    "start": "NODE_ENV=production next start",
+    "start": "NODE_ENV=production next start -H 0.0.0.0 -p 4001",
     "lint": "eslint .",
     "clean": "rm -rf .next",
     "migrate:sqlite": "node scripts/migrate-sqlite.mjs",
