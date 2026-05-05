@@ -73,7 +73,7 @@ function applySchema(db: Database.Database) {
       updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
     );
 
-    CREATE TABLE IF NOT EXISTS feedbacks (
+    CREATE TABLE IF NOT EXISTS feedback (
       id              INTEGER PRIMARY KEY AUTOINCREMENT,
       project_id      INTEGER REFERENCES projects(id),
       email           TEXT    NOT NULL,
@@ -94,9 +94,9 @@ function applySchema(db: Database.Database) {
       updated_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
     );
 
-    CREATE INDEX IF NOT EXISTS idx_feedbacks_email      ON feedbacks(email);
-    CREATE INDEX IF NOT EXISTS idx_feedbacks_created_at ON feedbacks(created_at);
-    CREATE INDEX IF NOT EXISTS idx_feedbacks_soft_delete ON feedbacks(soft_delete);
+    CREATE INDEX IF NOT EXISTS idx_feedback_email      ON feedback(email);
+    CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback(created_at);
+    CREATE INDEX IF NOT EXISTS idx_feedback_soft_delete ON feedback(soft_delete);
 
     CREATE TABLE IF NOT EXISTS api_keys (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -117,7 +117,7 @@ function applySchema(db: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS feedback_messages (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      feedback_id INTEGER NOT NULL REFERENCES feedbacks(id) ON DELETE CASCADE,
+      feedback_id INTEGER NOT NULL REFERENCES feedback(id) ON DELETE CASCADE,
       author_role TEXT NOT NULL CHECK(author_role IN ('User', 'Admin')),
       message     TEXT NOT NULL,
       soft_delete INTEGER NOT NULL DEFAULT 0,
@@ -142,14 +142,14 @@ function applySchema(db: Database.Database) {
   `);
 
   const feedbackColumns = db
-    .prepare(`PRAGMA table_info(feedbacks)`)
+    .prepare(`PRAGMA table_info(feedback)`)
     .all() as Array<{ name: string }>;
 
   const hasProjectId = feedbackColumns.some((col) => col.name === "project_id");
   if (!hasProjectId) {
-    db.exec(`ALTER TABLE feedbacks ADD COLUMN project_id INTEGER REFERENCES projects(id)`);
+    db.exec(`ALTER TABLE feedback ADD COLUMN project_id INTEGER REFERENCES projects(id)`);
   }
-  db.exec(`CREATE INDEX IF NOT EXISTS idx_feedbacks_project_id ON feedbacks(project_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_feedback_project_id ON feedback(project_id)`);
 
   const defaultProject = db
     .prepare(`SELECT id FROM projects WHERE slug = ? LIMIT 1`)
@@ -163,5 +163,5 @@ function applySchema(db: Database.Database) {
     defaultProjectId = inserted.id;
   }
 
-  db.prepare(`UPDATE feedbacks SET project_id = ? WHERE project_id IS NULL`).run(defaultProjectId);
+  db.prepare(`UPDATE feedback SET project_id = ? WHERE project_id IS NULL`).run(defaultProjectId);
 }

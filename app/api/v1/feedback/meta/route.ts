@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getFeedbackStatuses, getFeedbackTypes, getOrganisations } from "@/lib/feedback/sqlite-queries";
+import { getfeedbacktatuses, getFeedbackTypes, getOrganisations } from "@/lib/feedback/sqlite-queries";
 import { authenticateApiKey, v1Json, v1PreflightResponse } from "@/lib/api-v1";
 
 export async function OPTIONS() {
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     return v1Json({
       types: getFeedbackTypes(),
       organisations: getOrganisations(),
-      statuses: getFeedbackStatuses(),
+      statuses: getfeedbacktatuses(),
     });
   } catch (error) {
     return v1Json(

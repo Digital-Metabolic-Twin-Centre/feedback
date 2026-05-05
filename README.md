@@ -1,4 +1,4 @@
-# Feedbacks Headless API
+# feedback Headless API
 
 Headless feedback management backend built with Next.js route handlers and SQLite.
 
@@ -22,18 +22,18 @@ Headless feedback management backend built with Next.js route handlers and SQLit
 - `POST /api/v1/admin/projects` (bootstrap token protected)
 - `GET /api/v1/openapi.json`
 - `GET /api/v1/docs`
-- `POST /api/v1/feedbacks` (API key)
-- `GET /api/v1/feedbacks/:id` (API key, project scoped)
-- `GET /api/v1/feedbacks/meta` (API key)
-- `GET /api/v1/admin/feedbacks` (admin API key)
-- `GET /api/v1/admin/feedbacks/:id` (admin API key)
-- `GET /api/v1/admin/feedbacks/:id/messages` (admin API key)
-- `POST /api/v1/admin/feedbacks/:id/messages` (admin API key)
-- `PATCH /api/v1/admin/feedbacks/:id` (admin API key)
+- `POST /api/v1/feedback` (API key)
+- `GET /api/v1/feedback/:id` (API key, project scoped)
+- `GET /api/v1/feedback/meta` (API key)
+- `GET /api/v1/admin/feedback` (admin API key)
+- `GET /api/v1/admin/feedback/:id` (admin API key)
+- `GET /api/v1/admin/feedback/:id/messages` (admin API key)
+- `POST /api/v1/admin/feedback/:id/messages` (admin API key)
+- `PATCH /api/v1/admin/feedback/:id` (admin API key)
 
 ## Auth Model
 
-- `x-api-key` is required for all `/api/v1/feedbacks*` and `/api/v1/admin/feedbacks*` routes.
+- `x-api-key` is required for all `/api/v1/feedback*` and `/api/v1/admin/feedback*` routes.
 - Admin operations require an API key created with `isAdmin: true`.
 - API keys are project-bound; feedback data is isolated by `project_id`.
 - Initial key creation uses `x-bootstrap-token` on `POST /api/v1/admin/keys`.
@@ -133,23 +133,23 @@ curl "http://localhost:4001/api/v1/admin/projects" \
 Create feedback:
 
 ```bash
-curl -X POST http://localhost:4001/api/v1/feedbacks \
+curl -X POST http://localhost:4001/api/v1/feedback \
   -H "Content-Type: application/json" \
   -H "x-api-key: $API_KEY" \
   -d '{"email":"user@example.com","page":"/home","initial_message":"Great app"}'
 ```
 
-List feedbacks (admin key):
+List feedback (admin key):
 
 ```bash
-curl "http://localhost:4001/api/v1/admin/feedbacks?page=1&pageSize=50" \
+curl "http://localhost:4001/api/v1/admin/feedback?page=1&pageSize=50" \
   -H "x-api-key: $ADMIN_API_KEY"
 ```
 
 Update feedback status (admin key):
 
 ```bash
-curl -X PATCH http://localhost:4001/api/v1/admin/feedbacks/1 \
+curl -X PATCH http://localhost:4001/api/v1/admin/feedback/1 \
   -H "Content-Type: application/json" \
   -H "x-api-key: $ADMIN_API_KEY" \
   -d '{"action":"status","value":2}'
@@ -158,14 +158,14 @@ curl -X PATCH http://localhost:4001/api/v1/admin/feedbacks/1 \
 Get feedback detail (project key):
 
 ```bash
-curl "http://localhost:4001/api/v1/feedbacks/1?includeMessages=true" \
+curl "http://localhost:4001/api/v1/feedback/1?includeMessages=true" \
   -H "x-api-key: $API_KEY"
 ```
 
 Add admin thread message:
 
 ```bash
-curl -X POST http://localhost:4001/api/v1/admin/feedbacks/1/messages \
+curl -X POST http://localhost:4001/api/v1/admin/feedback/1/messages \
   -H "Content-Type: application/json" \
   -H "x-api-key: $ADMIN_API_KEY" \
   -d '{"message":"Thanks, this is now being worked on."}'

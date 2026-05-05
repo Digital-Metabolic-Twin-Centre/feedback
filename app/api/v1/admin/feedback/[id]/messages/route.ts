@@ -7,7 +7,7 @@ import {
 } from "@/lib/feedback/sqlite-queries";
 import {
   notifyFeedbackDistributionOfReply,
-  notifyFeedbackSubmitterOfReply,
+  notifyfeedbackubmitterOfReply,
 } from "@/lib/feedback-notifications";
 import { syncPromotedFeedbackToGitLab } from "@/lib/gitlab-feedback-sync";
 import { authenticateApiKey, requireAdmin, v1Json, v1PreflightResponse } from "@/lib/api-v1";
@@ -47,7 +47,7 @@ export async function GET(
     const messages = getThreadMessages(feedbackId, authResult.auth.projectId);
     return v1Json({ success: true, data: messages });
   } catch (error) {
-    logError(error, { operation: "v1/admin/feedbacks/messages GET", resource: req.url });
+    logError(error, { operation: "v1/admin/feedback/messages GET", resource: req.url });
     return v1Json(
       {
         success: false,
@@ -106,12 +106,12 @@ export async function POST(
     });
 
     if (feedback.email) {
-      notifyFeedbackSubmitterOfReply({
+      notifyfeedbackubmitterOfReply({
         feedbackId,
         submitterEmail: feedback.email,
         replierEmail: createdBy,
         replierRole: "Admin",
-      }).catch((err) => logError(err, { operation: "notifyFeedbackSubmitterOfReply", resource: String(feedbackId) }));
+      }).catch((err) => logError(err, { operation: "notifyfeedbackubmitterOfReply", resource: String(feedbackId) }));
 
       notifyFeedbackDistributionOfReply({
         feedbackId,
@@ -128,7 +128,7 @@ export async function POST(
     const messages = getThreadMessages(feedbackId, authResult.auth.projectId);
     return v1Json({ success: true, data: messages }, { status: 201 });
   } catch (error) {
-    logError(error, { operation: "v1/admin/feedbacks/messages POST", resource: req.url });
+    logError(error, { operation: "v1/admin/feedback/messages POST", resource: req.url });
     return v1Json(
       {
         success: false,

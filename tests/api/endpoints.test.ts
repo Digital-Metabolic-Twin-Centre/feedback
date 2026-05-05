@@ -33,12 +33,12 @@ describe("Headless API endpoints", () => {
   let db: import("better-sqlite3").Database;
 
   let healthRoute: typeof import("@/app/api/healthcheck/route");
-  let feedbacksRoute: typeof import("@/app/api/v1/feedbacks/route");
-  let feedbackMetaRoute: typeof import("@/app/api/v1/feedbacks/meta/route");
-  let feedbackByIdRoute: typeof import("@/app/api/v1/feedbacks/[id]/route");
-  let adminFeedbacksRoute: typeof import("@/app/api/v1/admin/feedbacks/route");
-  let adminFeedbackByIdRoute: typeof import("@/app/api/v1/admin/feedbacks/[id]/route");
-  let adminMessagesRoute: typeof import("@/app/api/v1/admin/feedbacks/[id]/messages/route");
+  let feedbackRoute: typeof import("@/app/api/v1/feedback/route");
+  let feedbackMetaRoute: typeof import("@/app/api/v1/feedback/meta/route");
+  let feedbackByIdRoute: typeof import("@/app/api/v1/feedback/[id]/route");
+  let adminfeedbackRoute: typeof import("@/app/api/v1/admin/feedback/route");
+  let adminFeedbackByIdRoute: typeof import("@/app/api/v1/admin/feedback/[id]/route");
+  let adminMessagesRoute: typeof import("@/app/api/v1/admin/feedback/[id]/messages/route");
   let keysRoute: typeof import("@/app/api/v1/admin/keys/route");
   let keyDeleteRoute: typeof import("@/app/api/v1/admin/keys/[id]/route");
   let keyRotateRoute: typeof import("@/app/api/v1/admin/keys/[id]/rotate/route");
@@ -64,12 +64,12 @@ describe("Headless API endpoints", () => {
     ({ createApiKeyForProject } = await import("@/lib/api-keys"));
 
     healthRoute = await import("@/app/api/healthcheck/route");
-    feedbacksRoute = await import("@/app/api/v1/feedbacks/route");
-    feedbackMetaRoute = await import("@/app/api/v1/feedbacks/meta/route");
-    feedbackByIdRoute = await import("@/app/api/v1/feedbacks/[id]/route");
-    adminFeedbacksRoute = await import("@/app/api/v1/admin/feedbacks/route");
-    adminFeedbackByIdRoute = await import("@/app/api/v1/admin/feedbacks/[id]/route");
-    adminMessagesRoute = await import("@/app/api/v1/admin/feedbacks/[id]/messages/route");
+    feedbackRoute = await import("@/app/api/v1/feedback/route");
+    feedbackMetaRoute = await import("@/app/api/v1/feedback/meta/route");
+    feedbackByIdRoute = await import("@/app/api/v1/feedback/[id]/route");
+    adminfeedbackRoute = await import("@/app/api/v1/admin/feedback/route");
+    adminFeedbackByIdRoute = await import("@/app/api/v1/admin/feedback/[id]/route");
+    adminMessagesRoute = await import("@/app/api/v1/admin/feedback/[id]/messages/route");
     keysRoute = await import("@/app/api/v1/admin/keys/route");
     keyDeleteRoute = await import("@/app/api/v1/admin/keys/[id]/route");
     keyRotateRoute = await import("@/app/api/v1/admin/keys/[id]/rotate/route");
@@ -81,13 +81,13 @@ describe("Headless API endpoints", () => {
   beforeEach(() => {
     db.exec(`
       DELETE FROM feedback_messages;
-      DELETE FROM feedbacks;
+      DELETE FROM feedback;
       DELETE FROM api_keys;
       DELETE FROM feedback_status;
       DELETE FROM feedback_types;
       DELETE FROM organisations;
       DELETE FROM projects WHERE slug != 'default';
-      UPDATE sqlite_sequence SET seq = 0 WHERE name IN ('feedback_status','feedback_types','organisations','feedbacks','feedback_messages','api_keys');
+      UPDATE sqlite_sequence SET seq = 0 WHERE name IN ('feedback_status','feedback_types','organisations','feedback','feedback_messages','api_keys');
     `);
 
     db.exec(`
@@ -175,8 +175,8 @@ describe("Headless API endpoints", () => {
   });
 
   test("feedback lifecycle endpoints", async () => {
-    const createRes = await feedbacksRoute.POST(
-      req("http://localhost/api/v1/feedbacks", {
+    const createRes = await feedbackRoute.POST(
+      req("http://localhost/api/v1/feedback", {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -198,14 +198,14 @@ describe("Headless API endpoints", () => {
     expect(createdFeedbackId).toBeGreaterThan(0);
 
     const metaRes = await feedbackMetaRoute.GET(
-      req("http://localhost/api/v1/feedbacks/meta", {
+      req("http://localhost/api/v1/feedback/meta", {
         headers: { "x-api-key": userApiKey },
       })
     );
     expect(metaRes.status).toBe(200);
 
     const detailRes = await feedbackByIdRoute.GET(
-      req(`http://localhost/api/v1/feedbacks/${createdFeedbackId}?includeMessages=true`, {
+      req(`http://localhost/api/v1/feedback/${createdFeedbackId}?includeMessages=true`, {
         headers: { "x-api-key": userApiKey },
       }),
       { params: Promise.resolve({ id: String(createdFeedbackId) }) }
@@ -215,15 +215,15 @@ describe("Headless API endpoints", () => {
     const detailData = detailJson.data as { feedback: { id: number } };
     expect(detailData.feedback.id).toBe(createdFeedbackId);
 
-    const adminListRes = await adminFeedbacksRoute.GET(
-      req("http://localhost/api/v1/admin/feedbacks", {
+    const adminListRes = await adminfeedbackRoute.GET(
+      req("http://localhost/api/v1/admin/feedback", {
         headers: { "x-api-key": adminApiKey },
       })
     );
     expect(adminListRes.status).toBe(200);
 
     const adminDetailRes = await adminFeedbackByIdRoute.GET(
-      req(`http://localhost/api/v1/admin/feedbacks/${createdFeedbackId}`, {
+      req(`http://localhost/api/v1/admin/feedback/${createdFeedbackId}`, {
         headers: { "x-api-key": adminApiKey },
       }),
       { params: Promise.resolve({ id: String(createdFeedbackId) }) }
@@ -231,7 +231,7 @@ describe("Headless API endpoints", () => {
     expect(adminDetailRes.status).toBe(200);
 
     const postMessageRes = await adminMessagesRoute.POST(
-      req(`http://localhost/api/v1/admin/feedbacks/${createdFeedbackId}/messages`, {
+      req(`http://localhost/api/v1/admin/feedback/${createdFeedbackId}/messages`, {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -244,7 +244,7 @@ describe("Headless API endpoints", () => {
     expect(postMessageRes.status).toBe(201);
 
     const listMessagesRes = await adminMessagesRoute.GET(
-      req(`http://localhost/api/v1/admin/feedbacks/${createdFeedbackId}/messages`, {
+      req(`http://localhost/api/v1/admin/feedback/${createdFeedbackId}/messages`, {
         headers: { "x-api-key": adminApiKey },
       }),
       { params: Promise.resolve({ id: String(createdFeedbackId) }) }
@@ -252,7 +252,7 @@ describe("Headless API endpoints", () => {
     expect(listMessagesRes.status).toBe(200);
 
     const patchRes = await adminFeedbackByIdRoute.PATCH(
-      req(`http://localhost/api/v1/admin/feedbacks/${createdFeedbackId}`, {
+      req(`http://localhost/api/v1/admin/feedback/${createdFeedbackId}`, {
         method: "PATCH",
         headers: {
           "content-type": "application/json",

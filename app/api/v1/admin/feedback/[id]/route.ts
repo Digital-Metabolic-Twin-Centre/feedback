@@ -32,7 +32,7 @@ export async function GET(
 
     return v1Json({ success: true, data: feedback });
   } catch (err) {
-    logError(err, { operation: "v1/admin/feedbacks GET", resource: req.url });
+    logError(err, { operation: "v1/admin/feedback GET", resource: req.url });
     const message = err instanceof Error ? err.message : "Internal server error";
     return v1Json({ success: false, error: message }, { status: 500 });
   }
@@ -107,7 +107,7 @@ export async function PATCH(
 
     return v1Json({ success: true });
   } catch (err) {
-    logError(err, { operation: "v1/admin/feedbacks PATCH", resource: req.url });
+    logError(err, { operation: "v1/admin/feedback PATCH", resource: req.url });
     const message = err instanceof Error ? err.message : "Internal server error";
     return v1Json({ success: false, error: message }, { status: 500 });
   }

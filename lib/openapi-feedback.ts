@@ -37,7 +37,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
       },
     },
     paths: {
-      "/api/v1/feedbacks": {
+      "/api/v1/feedback": {
         post: {
           summary: "Submit feedback",
           security: [{ ApiKeyAuth: [] }],
@@ -56,7 +56,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           },
         },
       },
-      "/api/v1/feedbacks/{id}": {
+      "/api/v1/feedback/{id}": {
         get: {
           summary: "Get feedback by id (project scoped)",
           security: [{ ApiKeyAuth: [] }],
@@ -80,7 +80,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           },
         },
       },
-      "/api/v1/feedbacks/meta": {
+      "/api/v1/feedback/meta": {
         get: {
           summary: "Reference data for feedback form",
           security: [{ ApiKeyAuth: [] }],
@@ -89,9 +89,9 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           },
         },
       },
-      "/api/v1/admin/feedbacks": {
+      "/api/v1/admin/feedback": {
         get: {
-          summary: "List feedbacks (admin key)",
+          summary: "List feedback (admin key)",
           security: [{ ApiKeyAuth: [] }],
           parameters: [
             {
@@ -110,7 +110,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           },
         },
       },
-      "/api/v1/admin/feedbacks/{id}": {
+      "/api/v1/admin/feedback/{id}": {
         get: {
           summary: "Get feedback detail (admin key)",
           security: [{ ApiKeyAuth: [] }],
@@ -161,7 +161,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           },
         },
       },
-      "/api/v1/admin/feedbacks/{id}/messages": {
+      "/api/v1/admin/feedback/{id}/messages": {
         get: {
           summary: "List feedback thread messages (admin key)",
           security: [{ ApiKeyAuth: [] }],

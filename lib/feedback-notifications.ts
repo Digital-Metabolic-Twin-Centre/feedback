@@ -28,8 +28,8 @@ function buildFeedbackUrl(feedbackId: number): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "";
   const base = appUrl.endsWith("/") ? appUrl.slice(0, -1) : appUrl;
   return base
-    ? `${base}/api/v1/admin/feedbacks?feedbackId=${feedbackId}`
-    : `/api/v1/admin/feedbacks?feedbackId=${feedbackId}`;
+    ? `${base}/api/v1/admin/feedback?feedbackId=${feedbackId}`
+    : `/api/v1/admin/feedback?feedbackId=${feedbackId}`;
 }
 
 function escapeHtml(value: string): string {
@@ -165,7 +165,7 @@ async function sendEmailToRecipients(input: {
   }
 }
 
-export async function notifyFeedbackSubmitted(input: {
+export async function notifyfeedbackubmitted(input: {
   feedbackId: number;
   submittedByEmail: string;
   page?: string | null;
@@ -197,7 +197,7 @@ export async function notifyFeedbackSubmitted(input: {
       <li><strong>Submitted by:</strong> ${submittedBySafe}</li>
       <li><strong>Page:</strong> ${pageTextSafe}</li>
     </ul>
-    <p><a href="${feedbackUrlSafe}">Open feedbacks</a></p>
+    <p><a href="${feedbackUrlSafe}">Open feedback</a></p>
   `;
 
   await sendEmailToRecipients({
@@ -205,13 +205,13 @@ export async function notifyFeedbackSubmitted(input: {
     subject,
     text,
     html,
-    context: "notifyFeedbackSubmitted",
+    context: "notifyfeedbackubmitted",
     auditSessionId: `feedback_submitted:${input.feedbackId}`,
     feedbackId: input.feedbackId,
   });
 }
 
-export async function notifyFeedbackSubmitterOfReply(input: {
+export async function notifyfeedbackubmitterOfReply(input: {
   feedbackId: number;
   submitterEmail: string;
   replierEmail: string;
@@ -250,7 +250,7 @@ export async function notifyFeedbackSubmitterOfReply(input: {
     subject,
     text,
     html,
-    context: "notifyFeedbackSubmitterOfReply",
+    context: "notifyfeedbackubmitterOfReply",
     auditSessionId: `feedback_reply:${input.feedbackId}`,
     feedbackId: input.feedbackId,
   });

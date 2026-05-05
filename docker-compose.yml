@@ -3,14 +3,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: feedbacks-app
+    container_name: feedback-app
     env_file:
       - .env.local
     ports:
       - "4001:4001"
     volumes:
-      - feedbacks_data:/app/data
+      - feedback_data:/app/data
     restart: always
 
 volumes:
-  feedbacks_data:
+  feedback_data:

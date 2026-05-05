@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { insertFeedback, insertThreadMessage, selectFeedbacks } from "@/lib/feedback/sqlite-queries";
-import { notifyFeedbackSubmitted } from "@/lib/feedback-notifications";
+import { insertFeedback, insertThreadMessage, selectfeedback } from "@/lib/feedback/sqlite-queries";
+import { notifyfeedbackubmitted } from "@/lib/feedback-notifications";
 import { authenticateApiKey, requireAdmin, v1Json, v1PreflightResponse } from "@/lib/api-v1";
 
 const feedbackPayloadSchema = z.object({
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!payload.draft) {
-      notifyFeedbackSubmitted({
+      notifyfeedbackubmitted({
         feedbackId: result.insertedId,
         submittedByEmail: payload.email,
         page: payload.page ?? null,
@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
     if (draft !== null) filters.draft = draft;
     if (sessionEmail) filters.__session_email = sessionEmail;
 
-    const result = selectFeedbacks(filters, [], { page, pageSize }, authResult.auth.projectId);
+    const result = selectfeedback(filters, [], { page, pageSize }, authResult.auth.projectId);
 
     return v1Json({
       data: result.data,

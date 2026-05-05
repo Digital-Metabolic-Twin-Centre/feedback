@@ -46,7 +46,7 @@ if (FRESH) {
     DROP TABLE IF EXISTS notification_audit;
     DROP TABLE IF EXISTS api_keys;
     DROP TABLE IF EXISTS feedback_messages;
-    DROP TABLE IF EXISTS feedbacks;
+    DROP TABLE IF EXISTS feedback;
     DROP TABLE IF EXISTS feedback_status;
     DROP TABLE IF EXISTS feedback_types;
     DROP TABLE IF EXISTS organisations;
@@ -111,8 +111,8 @@ db.exec(`
     updated_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
   );
 
-  -- ── Feedbacks ────────────────────────────────────────────────────────────────
-  CREATE TABLE IF NOT EXISTS feedbacks (
+  -- ── feedback ────────────────────────────────────────────────────────────────
+  CREATE TABLE IF NOT EXISTS feedback (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id       INTEGER REFERENCES projects(id),
     email            TEXT    NOT NULL,
@@ -133,9 +133,9 @@ db.exec(`
     updated_at       TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
   );
 
-  CREATE INDEX IF NOT EXISTS idx_feedbacks_email       ON feedbacks(email);
-  CREATE INDEX IF NOT EXISTS idx_feedbacks_created_at  ON feedbacks(created_at);
-  CREATE INDEX IF NOT EXISTS idx_feedbacks_soft_delete ON feedbacks(soft_delete);
+  CREATE INDEX IF NOT EXISTS idx_feedback_email       ON feedback(email);
+  CREATE INDEX IF NOT EXISTS idx_feedback_created_at  ON feedback(created_at);
+  CREATE INDEX IF NOT EXISTS idx_feedback_soft_delete ON feedback(soft_delete);
 
   -- ── API keys ─────────────────────────────────────────────────────────────────
   CREATE TABLE IF NOT EXISTS api_keys (
@@ -158,7 +158,7 @@ db.exec(`
   -- ── Feedback messages ────────────────────────────────────────────────────────
   CREATE TABLE IF NOT EXISTS feedback_messages (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    feedback_id INTEGER NOT NULL REFERENCES feedbacks(id) ON DELETE CASCADE,
+    feedback_id INTEGER NOT NULL REFERENCES feedback(id) ON DELETE CASCADE,
     author_role TEXT    NOT NULL CHECK(author_role IN ('User', 'Admin')),
     message     TEXT    NOT NULL,
     soft_delete INTEGER NOT NULL DEFAULT 0,
@@ -186,14 +186,14 @@ db.exec(`
 console.log("✅  Schema applied.");
 
 const feedbackColumns = db
-  .prepare(`PRAGMA table_info(feedbacks)`)
+  .prepare(`PRAGMA table_info(feedback)`)
   .all();
 
 const hasProjectId = feedbackColumns.some((col) => col.name === "project_id");
 if (!hasProjectId) {
-  db.exec(`ALTER TABLE feedbacks ADD COLUMN project_id INTEGER REFERENCES projects(id)`);
+  db.exec(`ALTER TABLE feedback ADD COLUMN project_id INTEGER REFERENCES projects(id)`);
 }
-db.exec(`CREATE INDEX IF NOT EXISTS idx_feedbacks_project_id ON feedbacks(project_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_feedback_project_id ON feedback(project_id)`);
 
 const defaultProject = db
   .prepare(`
@@ -202,7 +202,7 @@ const defaultProject = db
     RETURNING id
   `)
   .get("default", "Default Project");
-db.prepare(`UPDATE feedbacks SET project_id = ? WHERE project_id IS NULL`).run(defaultProject.id);
+db.prepare(`UPDATE feedback SET project_id = ? WHERE project_id IS NULL`).run(defaultProject.id);
 console.log("✅  Ensured default project.");
 
 // ─────────────────────────────────────────────

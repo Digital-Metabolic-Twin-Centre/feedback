@@ -34,7 +34,7 @@ export async function GET(
     const messages = getThreadMessages(id, authResult.auth.projectId);
     return v1Json({ success: true, data: { feedback, messages } });
   } catch (error) {
-    logError(error, { operation: "v1/feedbacks/[id] GET", resource: req.url });
+    logError(error, { operation: "v1/feedback/[id] GET", resource: req.url });
     return v1Json(
       {
         success: false,

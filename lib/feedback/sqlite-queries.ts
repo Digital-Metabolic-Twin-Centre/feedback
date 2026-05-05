@@ -44,7 +44,7 @@ export function getFeedbackTypes(): RefRow[] {
     .all() as RefRow[];
 }
 
-export function getFeedbackStatuses(): RefRow[] {
+export function getfeedbacktatuses(): RefRow[] {
   return db
     .prepare(
       `SELECT id, name, label FROM feedback_status
@@ -71,9 +71,9 @@ export function getOrganisations(filters: Record<string, string> = {}): RefRow[]
   return db.prepare(sql).all() as RefRow[];
 }
 
-// ── Feedbacks ─────────────────────────────────────────────────────────────────
+// ── feedback ─────────────────────────────────────────────────────────────────
 
-export function selectFeedbacks(
+export function selectfeedback(
   filters: Record<string, string> = {},
   groups: string[] = [],
   pagination?: { page: number; pageSize: number },
@@ -131,7 +131,7 @@ export function selectFeedbacks(
       f.created_at,
       f.updated_by,
       f.updated_at
-    FROM feedbacks f
+    FROM feedback f
     LEFT JOIN organisations     o  ON f.organisation   = o.id
     LEFT JOIN feedback_types    ft ON f.feedback_type   = ft.id
     LEFT JOIN feedback_status   fs ON f.feedback_status = fs.id
@@ -158,7 +158,7 @@ export function selectFeedbacks(
   `;
 
   const total = (
-    db.prepare(`SELECT COUNT(*) AS c FROM feedbacks f ${where}`).get(...params) as { c: number }
+    db.prepare(`SELECT COUNT(*) AS c FROM feedback f ${where}`).get(...params) as { c: number }
   ).c;
 
   let rows: FeedbackData[];
@@ -210,7 +210,7 @@ export function getFeedbackById(
          f.created_at,
          f.updated_by,
          f.updated_at
-       FROM feedbacks f
+       FROM feedback f
        LEFT JOIN organisations     o  ON f.organisation   = o.id
        LEFT JOIN feedback_types    ft ON f.feedback_type   = ft.id
        LEFT JOIN feedback_status   fs ON f.feedback_status = fs.id
@@ -257,17 +257,17 @@ export function insertFeedback(data: InsertFeedbackInput): { insertedId: number 
   const projectId = data.project_id ?? defaultProject?.id ?? null;
 
   // Resolve status to "Open" by default if not provided
-  let feedbackStatus = data.feedback_status ?? null;
-  if (!feedbackStatus) {
+  let feedbacktatus = data.feedback_status ?? null;
+  if (!feedbacktatus) {
     const openStatus = db
       .prepare(`SELECT id FROM feedback_status WHERE LOWER(name) = 'open' LIMIT 1`)
       .get() as { id: number } | undefined;
-    if (openStatus) feedbackStatus = openStatus.id;
+    if (openStatus) feedbacktatus = openStatus.id;
   }
 
   const result = db
     .prepare(
-      `INSERT INTO feedbacks
+      `INSERT INTO feedback
          (project_id, email, submitter_ref, organisation, page, feedback_type, feedback_status,
           promote, draft, created_by, created_at, updated_by, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -280,7 +280,7 @@ export function insertFeedback(data: InsertFeedbackInput): { insertedId: number 
       data.organisation ?? null,
       data.page ?? null,
       data.feedback_type ?? null,
-      feedbackStatus,
+      feedbacktatus,
       data.promote ? 1 : 0,
       data.draft ? 1 : 0,
       data.created_by || "anonymous",
@@ -301,7 +301,7 @@ export function updateFeedback(
   if (updates.promote === false || updates.promote === 0) {
     const existing = db
       .prepare(
-        `SELECT promote FROM feedbacks WHERE id = ? ${projectId ? "AND project_id = ?" : ""}`
+        `SELECT promote FROM feedback WHERE id = ? ${projectId ? "AND project_id = ?" : ""}`
       )
       .get(...(projectId ? [id, projectId] : [id])) as { promote: number } | undefined;
 
@@ -344,7 +344,7 @@ export function updateFeedback(
 
   const result = db
     .prepare(
-      `UPDATE feedbacks SET ${setClauses.join(", ")} WHERE id = ? ${projectId ? "AND project_id = ?" : ""}`
+      `UPDATE feedback SET ${setClauses.join(", ")} WHERE id = ? ${projectId ? "AND project_id = ?" : ""}`
     )
     .run(...values);
 
@@ -360,7 +360,7 @@ export function getFeedbackOwner(
   return db
     .prepare(
       `SELECT f.email, fs.name AS status_name
-       FROM feedbacks f
+       FROM feedback f
        LEFT JOIN feedback_status fs ON f.feedback_status = fs.id
        WHERE f.id = ? ${projectId ? "AND f.project_id = ?" : ""}`
     )
@@ -379,7 +379,7 @@ export function getThreadMessages(
        WHERE feedback_id = ?
          AND soft_delete = 0
          AND EXISTS (
-           SELECT 1 FROM feedbacks f
+           SELECT 1 FROM feedback f
            WHERE f.id = m.feedback_id
            ${projectId ? "AND f.project_id = ?" : ""}
          )
@@ -412,7 +412,7 @@ export function insertThreadMessage(input: {
     );
 
     db.prepare(
-      `UPDATE feedbacks SET updated_by = ?, updated_at = ? WHERE id = ?`
+      `UPDATE feedback SET updated_by = ?, updated_at = ? WHERE id = ?`
     ).run(input.createdBy, now, input.feedbackId);
   })();
 }
@@ -467,7 +467,7 @@ export function loadFeedbackForGitLab(feedbackId: number): {
          f.created_at,
          f.updated_by,
          f.updated_at
-       FROM feedbacks f
+       FROM feedback f
        LEFT JOIN organisations   o  ON f.organisation   = o.id
        LEFT JOIN feedback_types  ft ON f.feedback_type   = ft.id
        LEFT JOIN feedback_status fs ON f.feedback_status = fs.id
@@ -501,7 +501,7 @@ export function persistGitLabIssueLink(
   url: string | null
 ): void {
   db.prepare(
-    `UPDATE feedbacks
+    `UPDATE feedback
      SET gitlab_issue_iid = ?,
          gitlab_issue_url = COALESCE(?, gitlab_issue_url),
          promoted_at = COALESCE(promoted_at, ?)
