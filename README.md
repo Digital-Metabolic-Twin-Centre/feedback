@@ -85,6 +85,8 @@ curl -X POST http://localhost:4001/api/v1/admin/keys \
   -d '{"projectSlug":"default","projectName":"Default Project","keyName":"admin","isAdmin":true}'
 ```
 
+`projectSlug` is optional. If you omit it, the API uses the first active project. `isAdmin` is also optional and defaults to `false`.
+
 Use the returned key as:
 
 ```http

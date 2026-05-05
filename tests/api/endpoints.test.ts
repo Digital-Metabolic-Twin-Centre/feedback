@@ -303,4 +303,36 @@ describe("Headless API endpoints", () => {
     );
     expect(deleteRes.status).toBe(200);
   });
+
+  test("key creation uses the first active project when projectSlug is omitted", async () => {
+    db.exec(`
+      DELETE FROM api_keys;
+      DELETE FROM projects;
+      INSERT INTO projects (slug, name) VALUES ('alpha', 'Alpha Project');
+      INSERT INTO projects (slug, name) VALUES ('beta', 'Beta Project');
+    `);
+
+    const keyCreateRes = await keysRoute.POST(
+      req("http://localhost/api/v1/admin/keys", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-bootstrap-token": process.env.FEEDBACK_BOOTSTRAP_TOKEN as string,
+        },
+        body: JSON.stringify({ keyName: "first-project-key", isAdmin: true }),
+      })
+    );
+
+    expect(keyCreateRes.status).toBe(201);
+    const keyCreateJson = await readJson(keyCreateRes);
+    const createdKeyData = keyCreateJson.data as {
+      projectSlug: string;
+      projectName: string;
+      isAdmin: boolean;
+    };
+
+    expect(createdKeyData.projectSlug).toBe("alpha");
+    expect(createdKeyData.projectName).toBe("Alpha Project");
+    expect(createdKeyData.isAdmin).toBe(true);
+  });
 });

@@ -44,6 +44,20 @@ function normalizeSlug(value: string): string {
     .replace(/^-|-$/g, "") || "default";
 }
 
+function getFirstActiveProject(): { id: number; slug: string; name: string } | null {
+  const row = db
+    .prepare(
+      `SELECT id, slug, name
+       FROM projects
+       WHERE soft_delete = 0
+       ORDER BY id ASC
+       LIMIT 1`
+    )
+    .get() as { id: number; slug: string; name: string } | undefined;
+
+  return row ?? null;
+}
+
 function getOrCreateProject(projectSlug: string, projectName?: string): { id: number; slug: string; name: string } {
   const slug = normalizeSlug(projectSlug || "default");
   const existing = db
@@ -75,7 +89,10 @@ export function createApiKeyForProject(input?: {
   keyId: number;
   isAdmin: boolean;
 } {
-  const project = getOrCreateProject(input?.projectSlug || "default", input?.projectName);
+  const project =
+    input?.projectSlug?.trim()
+      ? getOrCreateProject(input.projectSlug, input?.projectName)
+      : getFirstActiveProject() ?? getOrCreateProject("default", input?.projectName);
   const apiKey = `fbk_${crypto.randomBytes(24).toString("hex")}`;
   const keyPrefix = apiKey.slice(0, 16);
   const keyHash = hashApiKey(apiKey);

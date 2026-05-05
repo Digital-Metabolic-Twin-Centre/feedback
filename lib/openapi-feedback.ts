@@ -299,6 +299,41 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
               schema: { type: "string" },
             },
           ],
+          requestBody: {
+            required: false,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    projectSlug: {
+                      type: "string",
+                      description: "Optional project slug. If omitted, the first active project is used.",
+                    },
+                    projectName: {
+                      type: "string",
+                      description: "Optional project name used only when a new project must be created.",
+                    },
+                    keyName: {
+                      type: "string",
+                      description: "Optional display name for the key.",
+                    },
+                    isAdmin: {
+                      type: "boolean",
+                      default: false,
+                      description: "Whether the generated key has admin access.",
+                    },
+                  },
+                },
+                example: {
+                  projectSlug: "default",
+                  projectName: "Default Project",
+                  keyName: "admin",
+                  isAdmin: true,
+                },
+              },
+            },
+          },
           responses: {
             "201": { description: "Generated API key" },
           },
