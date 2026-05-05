@@ -2,6 +2,13 @@ import packageJson from "@/package.json";
 
 export function feedbackOpenApiSpec(baseUrl?: string) {
   const serverUrl = baseUrl || "http://localhost:4001";
+  const apiKeyHeaderParameter = {
+    name: "x-api-key",
+    in: "header" as const,
+    required: true,
+    schema: { type: "string" },
+    description: "API key for the target project. Required for all non-bootstrap feedback routes.",
+  };
 
   return {
     openapi: "3.0.3",
@@ -41,6 +48,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
         post: {
           summary: "Submit feedback",
           security: [{ ApiKeyAuth: [] }],
+          parameters: [apiKeyHeaderParameter],
           requestBody: {
             required: true,
             content: {
@@ -61,6 +69,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           summary: "Get feedback by id (project scoped)",
           security: [{ ApiKeyAuth: [] }],
           parameters: [
+            apiKeyHeaderParameter,
             {
               name: "id",
               in: "path",
@@ -84,6 +93,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
         get: {
           summary: "Reference data for feedback form",
           security: [{ ApiKeyAuth: [] }],
+          parameters: [apiKeyHeaderParameter],
           responses: {
             "200": { description: "Metadata payload" },
           },
@@ -94,6 +104,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           summary: "List feedback (admin key)",
           security: [{ ApiKeyAuth: [] }],
           parameters: [
+            apiKeyHeaderParameter,
             {
               name: "page",
               in: "query",
@@ -115,6 +126,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           summary: "Get feedback detail (admin key)",
           security: [{ ApiKeyAuth: [] }],
           parameters: [
+            apiKeyHeaderParameter,
             {
               name: "id",
               in: "path",
@@ -131,6 +143,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           summary: "Update feedback by action (admin key)",
           security: [{ ApiKeyAuth: [] }],
           parameters: [
+            apiKeyHeaderParameter,
             {
               name: "id",
               in: "path",
@@ -166,6 +179,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           summary: "List feedback thread messages (admin key)",
           security: [{ ApiKeyAuth: [] }],
           parameters: [
+            apiKeyHeaderParameter,
             {
               name: "id",
               in: "path",
@@ -182,6 +196,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           summary: "Add admin thread message (admin key)",
           security: [{ ApiKeyAuth: [] }],
           parameters: [
+            apiKeyHeaderParameter,
             {
               name: "id",
               in: "path",

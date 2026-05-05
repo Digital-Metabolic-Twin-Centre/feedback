@@ -121,8 +121,24 @@ describe("Headless API endpoints", () => {
   test("openapi and docs endpoints", async () => {
     const openApiRes = await openApiRoute.GET();
     expect(openApiRes.status).toBe(200);
-    const spec = await openApiRes.json() as { info: { version: string } };
+    const spec = await openApiRes.json() as {
+      info: { version: string };
+      paths: {
+        "/api/v1/feedback/{id}": {
+          get: { parameters?: Array<{ name: string; in: string }> };
+        };
+        "/api/v1/feedback/meta": {
+          get: { parameters?: Array<{ name: string; in: string }> };
+        };
+      };
+    };
     expect(spec.info.version).toBeDefined();
+    expect(spec.paths["/api/v1/feedback/{id}"].get.parameters).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "x-api-key", in: "header" })])
+    );
+    expect(spec.paths["/api/v1/feedback/meta"].get.parameters).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "x-api-key", in: "header" })])
+    );
 
     const res: MockNextApiResponse = {
       headers: {},
