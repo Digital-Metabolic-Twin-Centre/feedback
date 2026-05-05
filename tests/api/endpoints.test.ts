@@ -231,6 +231,24 @@ describe("Headless API endpoints", () => {
     const detailData = detailJson.data as { feedback: { id: number } };
     expect(detailData.feedback.id).toBe(createdFeedbackId);
 
+    const userReplyRes = await feedbackByIdRoute.POST(
+      req(`http://localhost/api/v1/feedback/${createdFeedbackId}`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": userApiKey,
+        },
+        body: JSON.stringify({ message: "I have more details to add." }),
+      }),
+      { params: Promise.resolve({ id: String(createdFeedbackId) }) }
+    );
+    expect(userReplyRes.status).toBe(201);
+    const userReplyJson = await readJson(userReplyRes);
+    const userReplyData = userReplyJson.data as Array<{ author_role: string; message: string }>;
+    expect(userReplyData).toEqual(
+      expect.arrayContaining([expect.objectContaining({ author_role: "User", message: "I have more details to add." })])
+    );
+
     const adminListRes = await adminfeedbackRoute.GET(
       req("http://localhost/api/v1/admin/feedback", {
         headers: { "x-api-key": adminApiKey },

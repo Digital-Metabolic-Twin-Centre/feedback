@@ -88,6 +88,42 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
             "404": { description: "Not found" },
           },
         },
+        post: {
+          summary: "Add follow-up message to feedback thread (project scoped)",
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            apiKeyHeaderParameter,
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["message"],
+                  properties: {
+                    message: { type: "string" },
+                    createdBy: {
+                      type: "string",
+                      description: "Optional reply author identifier. Defaults to the feedback email when available.",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "201": { description: "Thread updated" },
+            "404": { description: "Not found" },
+            "409": { description: "Feedback closed" },
+          },
+        },
       },
       "/api/v1/feedback/meta": {
         get: {
