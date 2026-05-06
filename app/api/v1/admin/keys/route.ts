@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { createApiKeyForProject, listApiKeys } from "@/lib/api-keys";
-import { env } from "@/lib/env-validation";
-import { v1Json, v1PreflightResponse } from "@/lib/api-v1";
+import { authorizeBootstrap, v1Json, v1PreflightResponse } from "@/lib/api-v1";
 
 const keyRequestSchema = z.object({
   projectSlug: z.string().optional(),
@@ -13,23 +12,6 @@ const keyRequestSchema = z.object({
 
 export async function OPTIONS() {
   return v1PreflightResponse();
-}
-
-function authorizeBootstrap(req: NextRequest) {
-  const configuredToken = env.FEEDBACK_BOOTSTRAP_TOKEN;
-  if (!configuredToken) {
-    return v1Json(
-      { success: false, error: "FEEDBACK_BOOTSTRAP_TOKEN is not configured." },
-      { status: 503 }
-    );
-  }
-
-  const provided = req.headers.get("x-bootstrap-token") || "";
-  if (provided !== configuredToken) {
-    return v1Json({ success: false, error: "Invalid bootstrap token." }, { status: 403 });
-  }
-
-  return null;
 }
 
 export async function GET(req: NextRequest) {

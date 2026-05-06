@@ -470,6 +470,191 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           },
         },
       },
+      "/api/v1/admin/meta/{resource}": {
+        get: {
+          tags: ["Bootstrap Admin"],
+          summary: "List meta resources by table name (bootstrap token required)",
+          parameters: [
+            {
+              name: "resource",
+              in: "path",
+              required: true,
+              schema: {
+                type: "string",
+                enum: ["feedback_status", "feedback_types", "organisations", "projects", "api_keys"],
+              },
+            },
+            {
+              name: "x-bootstrap-token",
+              in: "header",
+              required: true,
+              schema: { type: "string" },
+            },
+            {
+              name: "includeArchived",
+              in: "query",
+              required: false,
+              schema: { type: "boolean", default: false },
+            },
+            {
+              name: "includeRevoked",
+              in: "query",
+              required: false,
+              schema: { type: "boolean", default: false },
+            },
+            {
+              name: "projectSlug",
+              in: "query",
+              required: false,
+              schema: { type: "string" },
+            },
+          ],
+          responses: {
+            "200": { description: "Resource list" },
+          },
+        },
+        post: {
+          tags: ["Bootstrap Admin"],
+          summary: "Create meta resource by table name (bootstrap token required)",
+          parameters: [
+            {
+              name: "resource",
+              in: "path",
+              required: true,
+              schema: {
+                type: "string",
+                enum: ["feedback_status", "feedback_types", "organisations", "projects", "api_keys"],
+              },
+            },
+            {
+              name: "x-bootstrap-token",
+              in: "header",
+              required: true,
+              schema: { type: "string" },
+            },
+          ],
+          requestBody: {
+            required: false,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  additionalProperties: true,
+                },
+              },
+            },
+          },
+          responses: {
+            "201": { description: "Resource created" },
+          },
+        },
+      },
+      "/api/v1/admin/meta/{resource}/{id}": {
+        get: {
+          tags: ["Bootstrap Admin"],
+          summary: "Get one meta resource by id (bootstrap token required)",
+          parameters: [
+            {
+              name: "resource",
+              in: "path",
+              required: true,
+              schema: {
+                type: "string",
+                enum: ["feedback_status", "feedback_types", "organisations", "projects", "api_keys"],
+              },
+            },
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+            },
+            {
+              name: "x-bootstrap-token",
+              in: "header",
+              required: true,
+              schema: { type: "string" },
+            },
+          ],
+          responses: {
+            "200": { description: "Resource detail" },
+            "404": { description: "Not found" },
+          },
+        },
+        patch: {
+          tags: ["Bootstrap Admin"],
+          summary: "Update one meta resource by id (bootstrap token required)",
+          parameters: [
+            {
+              name: "resource",
+              in: "path",
+              required: true,
+              schema: {
+                type: "string",
+                enum: ["feedback_status", "feedback_types", "organisations", "projects", "api_keys"],
+              },
+            },
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+            },
+            {
+              name: "x-bootstrap-token",
+              in: "header",
+              required: true,
+              schema: { type: "string" },
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  additionalProperties: true,
+                },
+              },
+            },
+          },
+          responses: {
+            "200": { description: "Resource updated" },
+            "404": { description: "Not found" },
+          },
+        },
+        delete: {
+          tags: ["Bootstrap Admin"],
+          summary: "Soft delete one meta resource by id (bootstrap token required)",
+          parameters: [
+            {
+              name: "resource",
+              in: "path",
+              required: true,
+              schema: {
+                type: "string",
+                enum: ["feedback_status", "feedback_types", "organisations", "projects", "api_keys"],
+              },
+            },
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+            },
+            {
+              name: "x-bootstrap-token",
+              in: "header",
+              required: true,
+              schema: { type: "string" },
+            },
+          ],
+          responses: {
+            "200": { description: "Resource deleted" },
+            "404": { description: "Not found" },
+          },
+        },
+      },
       "/api/v1/openapi.json": {
         get: {
           tags: ["Documentation"],

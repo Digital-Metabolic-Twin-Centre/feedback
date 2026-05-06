@@ -43,6 +43,8 @@ describe("Headless API endpoints", () => {
   let keyDeleteRoute: typeof import("@/app/api/v1/admin/keys/[id]/route");
   let keyRotateRoute: typeof import("@/app/api/v1/admin/keys/[id]/rotate/route");
   let projectsRoute: typeof import("@/app/api/v1/admin/projects/route");
+  let adminMetaRoute: typeof import("@/app/api/v1/admin/meta/[resource]/route");
+  let adminMetaByIdRoute: typeof import("@/app/api/v1/admin/meta/[resource]/[id]/route");
   let openApiRoute: typeof import("@/app/api/v1/openapi.json/route");
   let docsHandler: typeof import("@/pages/api/v1/docs").default;
 
@@ -74,6 +76,8 @@ describe("Headless API endpoints", () => {
     keyDeleteRoute = await import("@/app/api/v1/admin/keys/[id]/route");
     keyRotateRoute = await import("@/app/api/v1/admin/keys/[id]/rotate/route");
     projectsRoute = await import("@/app/api/v1/admin/projects/route");
+    adminMetaRoute = await import("@/app/api/v1/admin/meta/[resource]/route");
+    adminMetaByIdRoute = await import("@/app/api/v1/admin/meta/[resource]/[id]/route");
     openApiRoute = await import("@/app/api/v1/openapi.json/route");
     ({ default: docsHandler } = await import("@/pages/api/v1/docs"));
   });
@@ -137,6 +141,9 @@ describe("Headless API endpoints", () => {
         "/api/v1/admin/keys": {
           get: { tags?: string[] };
         };
+        "/api/v1/admin/meta/{resource}": {
+          get: { tags?: string[] };
+        };
         "/api/v1/openapi.json": {
           get: { tags?: string[] };
         };
@@ -161,6 +168,7 @@ describe("Headless API endpoints", () => {
     expect(spec.paths["/api/v1/feedback/meta"].get.tags).toEqual(["Feedback"]);
     expect(spec.paths["/api/v1/admin/feedback"].get.tags).toEqual(["Admin Feedback"]);
     expect(spec.paths["/api/v1/admin/keys"].get.tags).toEqual(["Bootstrap Admin"]);
+    expect(spec.paths["/api/v1/admin/meta/{resource}"].get.tags).toEqual(["Bootstrap Admin"]);
     expect(spec.paths["/api/v1/openapi.json"].get.tags).toEqual(["Documentation"]);
 
     const res: MockNextApiResponse = {
@@ -212,6 +220,155 @@ describe("Headless API endpoints", () => {
       })
     );
     expect(projectsRes.status).toBe(200);
+  });
+
+  test("bootstrap-protected meta CRUD routes", async () => {
+    const headers = { "x-bootstrap-token": process.env.FEEDBACK_BOOTSTRAP_TOKEN as string };
+
+    const listStatusesRes = await adminMetaRoute.GET(
+      req("http://localhost/api/v1/admin/meta/feedback_status", { headers }),
+      { params: Promise.resolve({ resource: "feedback_status" }) }
+    );
+    expect(listStatusesRes.status).toBe(200);
+    const listStatusesJson = await readJson(listStatusesRes);
+    expect(Array.isArray(listStatusesJson.data)).toBe(true);
+
+    const createStatusRes = await adminMetaRoute.POST(
+      req("http://localhost/api/v1/admin/meta/feedback_status", {
+        method: "POST",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ name: "Escalated", label: "Escalated", createdBy: "tester" }),
+      }),
+      { params: Promise.resolve({ resource: "feedback_status" }) }
+    );
+    expect(createStatusRes.status).toBe(201);
+    const createStatusJson = await readJson(createStatusRes);
+    const createdStatus = createStatusJson.data as { id: number; name: string };
+    expect(createdStatus.name).toBe("Escalated");
+
+    const getStatusRes = await adminMetaByIdRoute.GET(
+      req(`http://localhost/api/v1/admin/meta/feedback_status/${createdStatus.id}`, { headers }),
+      { params: Promise.resolve({ resource: "feedback_status", id: String(createdStatus.id) }) }
+    );
+    expect(getStatusRes.status).toBe(200);
+
+    const updateStatusRes = await adminMetaByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/meta/feedback_status/${createdStatus.id}`, {
+        method: "PATCH",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ label: "Escalated Review", draft: true }),
+      }),
+      { params: Promise.resolve({ resource: "feedback_status", id: String(createdStatus.id) }) }
+    );
+    expect(updateStatusRes.status).toBe(200);
+    const updateStatusJson = await readJson(updateStatusRes);
+    const updatedStatus = updateStatusJson.data as { label: string; draft: boolean };
+    expect(updatedStatus.label).toBe("Escalated Review");
+    expect(updatedStatus.draft).toBe(true);
+
+    const createOrganisationRes = await adminMetaRoute.POST(
+      req("http://localhost/api/v1/admin/meta/organisations", {
+        method: "POST",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ name: "Acme", label: "Acme Org", country: "IE" }),
+      }),
+      { params: Promise.resolve({ resource: "organisations" }) }
+    );
+    expect(createOrganisationRes.status).toBe(201);
+    const createOrganisationJson = await readJson(createOrganisationRes);
+    const createdOrganisation = createOrganisationJson.data as { id: number; country: string };
+    expect(createdOrganisation.country).toBe("IE");
+
+    const updateOrganisationRes = await adminMetaByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/meta/organisations/${createdOrganisation.id}`, {
+        method: "PATCH",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ country: "GB", softDelete: false }),
+      }),
+      { params: Promise.resolve({ resource: "organisations", id: String(createdOrganisation.id) }) }
+    );
+    expect(updateOrganisationRes.status).toBe(200);
+    const updateOrganisationJson = await readJson(updateOrganisationRes);
+    const updatedOrganisation = updateOrganisationJson.data as { country: string };
+    expect(updatedOrganisation.country).toBe("GB");
+
+    const createProjectRes = await adminMetaRoute.POST(
+      req("http://localhost/api/v1/admin/meta/projects", {
+        method: "POST",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ slug: "meta-project", name: "Meta Project" }),
+      }),
+      { params: Promise.resolve({ resource: "projects" }) }
+    );
+    expect(createProjectRes.status).toBe(201);
+    const createProjectJson = await readJson(createProjectRes);
+    const createdProject = createProjectJson.data as { id: number; slug: string };
+    expect(createdProject.slug).toBe("meta-project");
+
+    const updateProjectRes = await adminMetaByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/meta/projects/${createdProject.id}`, {
+        method: "PATCH",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ name: "Meta Project Updated", draft: true }),
+      }),
+      { params: Promise.resolve({ resource: "projects", id: String(createdProject.id) }) }
+    );
+    expect(updateProjectRes.status).toBe(200);
+    const updateProjectJson = await readJson(updateProjectRes);
+    const updatedProject = updateProjectJson.data as { name: string; draft: boolean };
+    expect(updatedProject.name).toBe("Meta Project Updated");
+    expect(updatedProject.draft).toBe(true);
+
+    const createKeyRes = await adminMetaRoute.POST(
+      req("http://localhost/api/v1/admin/meta/api_keys", {
+        method: "POST",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ projectSlug: "meta-project", keyName: "meta-key", isAdmin: false }),
+      }),
+      { params: Promise.resolve({ resource: "api_keys" }) }
+    );
+    expect(createKeyRes.status).toBe(201);
+    const createKeyJson = await readJson(createKeyRes);
+    const createdKey = createKeyJson.data as { keyId: number; apiKey: string };
+    expect(createdKey.apiKey.startsWith("fbk_")).toBe(true);
+
+    const getKeyRes = await adminMetaByIdRoute.GET(
+      req(`http://localhost/api/v1/admin/meta/api_keys/${createdKey.keyId}`, { headers }),
+      { params: Promise.resolve({ resource: "api_keys", id: String(createdKey.keyId) }) }
+    );
+    expect(getKeyRes.status).toBe(200);
+
+    const updateKeyRes = await adminMetaByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/meta/api_keys/${createdKey.keyId}`, {
+        method: "PATCH",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ name: "meta-key-updated", isAdmin: true }),
+      }),
+      { params: Promise.resolve({ resource: "api_keys", id: String(createdKey.keyId) }) }
+    );
+    expect(updateKeyRes.status).toBe(200);
+    const updateKeyJson = await readJson(updateKeyRes);
+    const updatedKey = updateKeyJson.data as { name: string; isAdmin: boolean };
+    expect(updatedKey.name).toBe("meta-key-updated");
+    expect(updatedKey.isAdmin).toBe(true);
+
+    const deleteKeyRes = await adminMetaByIdRoute.DELETE(
+      req(`http://localhost/api/v1/admin/meta/api_keys/${createdKey.keyId}`, {
+        method: "DELETE",
+        headers,
+      }),
+      { params: Promise.resolve({ resource: "api_keys", id: String(createdKey.keyId) }) }
+    );
+    expect(deleteKeyRes.status).toBe(200);
+
+    const deleteProjectRes = await adminMetaByIdRoute.DELETE(
+      req(`http://localhost/api/v1/admin/meta/projects/${createdProject.id}`, {
+        method: "DELETE",
+        headers,
+      }),
+      { params: Promise.resolve({ resource: "projects", id: String(createdProject.id) }) }
+    );
+    expect(deleteProjectRes.status).toBe(200);
   });
 
   test("feedback lifecycle endpoints", async () => {

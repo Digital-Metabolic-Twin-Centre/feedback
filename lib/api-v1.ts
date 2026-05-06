@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { ApiKeyAuthContext } from "@/lib/api-keys";
+import { env } from "@/lib/env-validation";
 
 export function v1CorsHeaders(): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, x-api-key",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, x-api-key, x-bootstrap-token",
     "Access-Control-Max-Age": "86400",
   };
 }
@@ -22,6 +23,23 @@ export function v1Json(data: unknown, init?: { status?: number }): NextResponse 
     status: init?.status ?? 200,
     headers: v1CorsHeaders(),
   });
+}
+
+export function authorizeBootstrap(req: NextRequest): NextResponse | null {
+  const configuredToken = env.FEEDBACK_BOOTSTRAP_TOKEN;
+  if (!configuredToken) {
+    return v1Json(
+      { success: false, error: "FEEDBACK_BOOTSTRAP_TOKEN is not configured." },
+      { status: 503 }
+    );
+  }
+
+  const provided = req.headers.get("x-bootstrap-token") || "";
+  if (provided !== configuredToken) {
+    return v1Json({ success: false, error: "Invalid bootstrap token." }, { status: 403 });
+  }
+
+  return null;
 }
 
 export async function authenticateApiKey(req: NextRequest): Promise<

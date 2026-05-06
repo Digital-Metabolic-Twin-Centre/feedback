@@ -1,30 +1,12 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { env } from "@/lib/env-validation";
 import { createProject, listProjects } from "@/lib/projects";
-import { v1Json, v1PreflightResponse } from "@/lib/api-v1";
+import { authorizeBootstrap, v1Json, v1PreflightResponse } from "@/lib/api-v1";
 
 const createProjectSchema = z.object({
   slug: z.string().min(1),
   name: z.string().min(1),
 });
-
-function authorizeBootstrap(req: NextRequest) {
-  const configuredToken = env.FEEDBACK_BOOTSTRAP_TOKEN;
-  if (!configuredToken) {
-    return v1Json(
-      { success: false, error: "FEEDBACK_BOOTSTRAP_TOKEN is not configured." },
-      { status: 503 }
-    );
-  }
-
-  const provided = req.headers.get("x-bootstrap-token") || "";
-  if (provided !== configuredToken) {
-    return v1Json({ success: false, error: "Invalid bootstrap token." }, { status: 403 });
-  }
-
-  return null;
-}
 
 export async function OPTIONS() {
   return v1PreflightResponse();

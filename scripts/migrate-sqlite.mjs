@@ -26,7 +26,7 @@ const args = process.argv.slice(2);
 const FRESH = args.includes("--fresh");
 const SEED = args.includes("--seed") || FRESH;
 
-console.log(`\n📦  SQLite feedback database migration`);
+console.log(`\n  SQLite feedback database migration`);
 console.log(`    Path  : ${DB_PATH}`);
 console.log(`    Fresh : ${FRESH}`);
 console.log(`    Seed  : ${SEED}\n`);
@@ -41,7 +41,7 @@ db.pragma("foreign_keys = ON");
 // Drop all tables (--fresh only)
 // ─────────────────────────────────────────────
 if (FRESH) {
-  console.log("🗑️   Dropping existing tables...");
+  console.log("Dropping existing tables...");
   db.exec(`
     DROP TABLE IF EXISTS notification_audit;
     DROP TABLE IF EXISTS api_keys;
@@ -57,7 +57,7 @@ if (FRESH) {
 // ─────────────────────────────────────────────
 // Create tables
 // ─────────────────────────────────────────────
-console.log("🏗️   Applying schema...");
+console.log("Applying schema...");
 
 db.exec(`
   -- ── Projects ─────────────────────────────────────────────────────────────────
@@ -183,7 +183,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_notification_audit_created_at ON notification_audit(created_at);
 `);
 
-console.log("✅  Schema applied.");
+console.log("Schema applied.");
 
 const feedbackColumns = db
   .prepare(`PRAGMA table_info(feedback)`)
@@ -203,13 +203,13 @@ const defaultProject = db
   `)
   .get("default", "Default Project");
 db.prepare(`UPDATE feedback SET project_id = ? WHERE project_id IS NULL`).run(defaultProject.id);
-console.log("✅  Ensured default project.");
+console.log("Ensured default project.");
 
 // ─────────────────────────────────────────────
 // Seed reference data
 // ─────────────────────────────────────────────
 if (SEED) {
-  console.log("\n🌱  Seeding reference data...");
+  console.log("\n Seeding reference data...");
 
   const seedTx = db.transaction(() => {
     // Feedback types
@@ -254,18 +254,14 @@ if (SEED) {
       ["Heidelberg University",      "Heidelberg University",   "Germany"],
       ["Erasmus MC",                 "Erasmus Medical Centre",  "Netherlands"],
       ["Birmingham Children's",      "Birmingham Children's Hospital", "United Kingdom"],
-      ["Hôpital Necker",             "Hôpital Necker – Enfants Malades", "France"],
-      ["Hospital La Fe",             "Hospital Universitari i Politècnic La Fe", "Spain"],
-      ["Semmelweis University",      "Semmelweis University",   "Hungary"],
-      ["Oslo University Hospital",   "Oslo University Hospital","Norway"],
     ];
     for (const [name, label, country] of orgs) insertOrg.run(name, label, country);
     console.log(`   organisations    → ${orgs.length} rows`);
   });
 
   seedTx();
-  console.log("✅  Seed complete.");
+  console.log("Seed complete.");
 }
 
 db.close();
-console.log("\n🎉  Migration finished.\n");
+console.log("\n Migration finished.\n");
