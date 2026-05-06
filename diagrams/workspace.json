@@ -1,0 +1,415 @@
+{
+  "configuration" : { },
+  "description" : "Architecture diagrams for the feedback management API service.",
+  "documentation" : { },
+  "id" : 1,
+  "lastModifiedDate" : "2026-05-06T09:10:12Z",
+  "model" : {
+    "deploymentNodes" : [ {
+      "children" : [ {
+        "containerInstances" : [ {
+          "containerId" : "9",
+          "environment" : "docker-deployment",
+          "id" : "25",
+          "instanceId" : 1,
+          "properties" : {
+            "structurizr.dsl.identifier" : "50f00ff0-aff7-4da3-9f3b-77bba5c2fffa"
+          },
+          "relationships" : [ {
+            "description" : "Reads and writes application data",
+            "destinationId" : "26",
+            "id" : "27",
+            "linkedRelationshipId" : "15",
+            "sourceId" : "25"
+          } ],
+          "tags" : "Container Instance"
+        }, {
+          "containerId" : "10",
+          "environment" : "docker-deployment",
+          "id" : "26",
+          "instanceId" : 1,
+          "properties" : {
+            "structurizr.dsl.identifier" : "95b0686b-d619-408b-ad4e-64f6e8994f8c"
+          },
+          "tags" : "Container Instance"
+        } ],
+        "description" : "Application container started from the published image",
+        "environment" : "docker-deployment",
+        "id" : "24",
+        "instances" : "1",
+        "name" : "feedback-app container",
+        "properties" : {
+          "structurizr.dsl.identifier" : "b4913d13-ed15-4fc3-b512-e6455f8228ac"
+        },
+        "tags" : "Element,Deployment Node",
+        "technology" : "Container"
+      } ],
+      "description" : "Linux server or Apple Silicon Mac running Docker",
+      "environment" : "docker-deployment",
+      "id" : "23",
+      "infrastructureNodes" : [ {
+        "description" : "Persistent Docker volume mounted at /app/data",
+        "environment" : "docker-deployment",
+        "id" : "28",
+        "name" : "feedback_data volume",
+        "properties" : {
+          "structurizr.dsl.identifier" : "86d2ac1f-a808-49f1-8a14-99c79809918b"
+        },
+        "tags" : "Element,Infrastructure Node"
+      } ],
+      "instances" : "1",
+      "name" : "Host Machine",
+      "properties" : {
+        "structurizr.dsl.identifier" : "7b0778c7-8892-4e89-a087-d61ebc9f0924"
+      },
+      "tags" : "Element,Deployment Node",
+      "technology" : "Docker Engine"
+    } ],
+    "people" : [ {
+      "description" : "Submits feedback and reads project-scoped feedback threads.",
+      "id" : "1",
+      "name" : "API Consumer",
+      "properties" : {
+        "structurizr.dsl.identifier" : "apiConsumer"
+      },
+      "relationships" : [ {
+        "description" : "Uses feedback endpoints via x-api-key over HTTPS",
+        "destinationId" : "9",
+        "id" : "11",
+        "sourceId" : "1",
+        "tags" : "Relationship"
+      }, {
+        "description" : "Uses feedback endpoints via x-api-key over HTTPS",
+        "destinationId" : "8",
+        "id" : "12",
+        "linkedRelationshipId" : "11",
+        "sourceId" : "1"
+      } ],
+      "tags" : "Element,Person"
+    }, {
+      "description" : "Manages feedback, projects, API keys, and reference metadata.",
+      "id" : "2",
+      "name" : "Admin User",
+      "properties" : {
+        "structurizr.dsl.identifier" : "adminUser"
+      },
+      "relationships" : [ {
+        "description" : "Uses admin feedback and bootstrap management endpoints over HTTPS",
+        "destinationId" : "9",
+        "id" : "13",
+        "sourceId" : "2",
+        "tags" : "Relationship"
+      }, {
+        "description" : "Uses admin feedback and bootstrap management endpoints over HTTPS",
+        "destinationId" : "8",
+        "id" : "14",
+        "linkedRelationshipId" : "13",
+        "sourceId" : "2"
+      } ],
+      "tags" : "Element,Person"
+    }, {
+      "description" : "Deploys the service, configures secrets, and manages tagged Docker releases.",
+      "id" : "3",
+      "name" : "Platform Operator",
+      "properties" : {
+        "structurizr.dsl.identifier" : "operator"
+      },
+      "relationships" : [ {
+        "description" : "Pushes branches and version tags",
+        "destinationId" : "4",
+        "id" : "20",
+        "sourceId" : "3",
+        "tags" : "Relationship"
+      }, {
+        "description" : "Pulls released Docker images",
+        "destinationId" : "5",
+        "id" : "21",
+        "sourceId" : "3",
+        "tags" : "Relationship"
+      } ],
+      "tags" : "Element,Person"
+    } ],
+    "softwareSystems" : [ {
+      "description" : "Builds, tests, and publishes tagged multi-architecture Docker images.",
+      "documentation" : { },
+      "id" : "4",
+      "name" : "GitHub Actions",
+      "properties" : {
+        "structurizr.dsl.identifier" : "gitHubActions"
+      },
+      "relationships" : [ {
+        "description" : "Publishes tagged multi-architecture Docker images",
+        "destinationId" : "5",
+        "id" : "22",
+        "sourceId" : "4",
+        "tags" : "Relationship"
+      } ],
+      "tags" : "Element,Software System"
+    }, {
+      "description" : "Stores published Docker images for deployment.",
+      "documentation" : { },
+      "id" : "5",
+      "name" : "GitHub Container Registry",
+      "properties" : {
+        "structurizr.dsl.identifier" : "gitHubContainerRegistry"
+      },
+      "tags" : "Element,Software System"
+    }, {
+      "description" : "Receives promoted feedback as issues and follow-up updates.",
+      "documentation" : { },
+      "id" : "6",
+      "name" : "GitLab",
+      "properties" : {
+        "structurizr.dsl.identifier" : "gitLab"
+      },
+      "tags" : "Element,Software System"
+    }, {
+      "description" : "Delivers notification emails when admins reply to feedback.",
+      "documentation" : { },
+      "id" : "7",
+      "name" : "SMTP Provider",
+      "properties" : {
+        "structurizr.dsl.identifier" : "smtpProvider"
+      },
+      "tags" : "Element,Software System"
+    }, {
+      "containers" : [ {
+        "description" : "Serves versioned REST endpoints, Swagger docs, bootstrap admin routes, and feedback workflows.",
+        "documentation" : { },
+        "id" : "9",
+        "name" : "Next.js API Service",
+        "properties" : {
+          "structurizr.dsl.identifier" : "webApi"
+        },
+        "relationships" : [ {
+          "description" : "Reads and writes application data",
+          "destinationId" : "10",
+          "id" : "15",
+          "sourceId" : "9",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Creates and updates promoted issues via API",
+          "destinationId" : "6",
+          "id" : "16",
+          "sourceId" : "9",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Sends reply notification emails via SMTP",
+          "destinationId" : "7",
+          "id" : "18",
+          "sourceId" : "9",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container",
+        "technology" : "Node.js 22, Next.js 16, TypeScript"
+      }, {
+        "description" : "Embedded SQLite database storing feedback, projects, API keys, messages, audit records, and metadata.",
+        "documentation" : { },
+        "id" : "10",
+        "name" : "SQLite Database",
+        "properties" : {
+          "structurizr.dsl.identifier" : "sqlite"
+        },
+        "tags" : "Element,Container",
+        "technology" : "SQLite"
+      } ],
+      "description" : "Next.js-based headless feedback management backend.",
+      "documentation" : { },
+      "id" : "8",
+      "name" : "DMTC Feedback API",
+      "properties" : {
+        "structurizr.dsl.identifier" : "feedbackApi"
+      },
+      "relationships" : [ {
+        "description" : "Creates and updates promoted issues via API",
+        "destinationId" : "6",
+        "id" : "17",
+        "linkedRelationshipId" : "16",
+        "sourceId" : "8"
+      }, {
+        "description" : "Sends reply notification emails via SMTP",
+        "destinationId" : "7",
+        "id" : "19",
+        "linkedRelationshipId" : "18",
+        "sourceId" : "8"
+      } ],
+      "tags" : "Element,Software System"
+    } ]
+  },
+  "name" : "Feedback Headless API",
+  "properties" : {
+    "structurizr.inspection.error" : "21",
+    "structurizr.dsl" : "d29ya3NwYWNlICJGZWVkYmFjayBIZWFkbGVzcyBBUEkiICJBcmNoaXRlY3R1cmUgZGlhZ3JhbXMgZm9yIHRoZSBmZWVkYmFjayBtYW5hZ2VtZW50IEFQSSBzZXJ2aWNlLiIgewoKICAgIG1vZGVsIHsKICAgICAgICBhcGlDb25zdW1lciA9IHBlcnNvbiAiQVBJIENvbnN1bWVyIiAiU3VibWl0cyBmZWVkYmFjayBhbmQgcmVhZHMgcHJvamVjdC1zY29wZWQgZmVlZGJhY2sgdGhyZWFkcy4iCiAgICAgICAgYWRtaW5Vc2VyID0gcGVyc29uICJBZG1pbiBVc2VyIiAiTWFuYWdlcyBmZWVkYmFjaywgcHJvamVjdHMsIEFQSSBrZXlzLCBhbmQgcmVmZXJlbmNlIG1ldGFkYXRhLiIKICAgICAgICBvcGVyYXRvciA9IHBlcnNvbiAiUGxhdGZvcm0gT3BlcmF0b3IiICJEZXBsb3lzIHRoZSBzZXJ2aWNlLCBjb25maWd1cmVzIHNlY3JldHMsIGFuZCBtYW5hZ2VzIHRhZ2dlZCBEb2NrZXIgcmVsZWFzZXMuIgoKICAgICAgICBnaXRIdWJBY3Rpb25zID0gc29mdHdhcmVTeXN0ZW0gIkdpdEh1YiBBY3Rpb25zIiAiQnVpbGRzLCB0ZXN0cywgYW5kIHB1Ymxpc2hlcyB0YWdnZWQgbXVsdGktYXJjaGl0ZWN0dXJlIERvY2tlciBpbWFnZXMuIgogICAgICAgIGdpdEh1YkNvbnRhaW5lclJlZ2lzdHJ5ID0gc29mdHdhcmVTeXN0ZW0gIkdpdEh1YiBDb250YWluZXIgUmVnaXN0cnkiICJTdG9yZXMgcHVibGlzaGVkIERvY2tlciBpbWFnZXMgZm9yIGRlcGxveW1lbnQuIgogICAgICAgIGdpdExhYiA9IHNvZnR3YXJlU3lzdGVtICJHaXRMYWIiICJSZWNlaXZlcyBwcm9tb3RlZCBmZWVkYmFjayBhcyBpc3N1ZXMgYW5kIGZvbGxvdy11cCB1cGRhdGVzLiIKICAgICAgICBzbXRwUHJvdmlkZXIgPSBzb2Z0d2FyZVN5c3RlbSAiU01UUCBQcm92aWRlciIgIkRlbGl2ZXJzIG5vdGlmaWNhdGlvbiBlbWFpbHMgd2hlbiBhZG1pbnMgcmVwbHkgdG8gZmVlZGJhY2suIgoKICAgICAgICBmZWVkYmFja0FwaSA9IHNvZnR3YXJlU3lzdGVtICJETVRDIEZlZWRiYWNrIEFQSSIgIk5leHQuanMtYmFzZWQgaGVhZGxlc3MgZmVlZGJhY2sgbWFuYWdlbWVudCBiYWNrZW5kLiIgewogICAgICAgICAgICAKICAgICAgICAgICAgd2ViQXBpID0gY29udGFpbmVyICJOZXh0LmpzIEFQSSBTZXJ2aWNlIiAiU2VydmVzIHZlcnNpb25lZCBSRVNUIGVuZHBvaW50cywgU3dhZ2dlciBkb2NzLCBib290c3RyYXAgYWRtaW4gcm91dGVzLCBhbmQgZmVlZGJhY2sgd29ya2Zsb3dzLiIgIk5vZGUuanMgMjIsIE5leHQuanMgMTYsIFR5cGVTY3JpcHQiCgogICAgICAgICAgICBzcWxpdGUgPSBjb250YWluZXIgIlNRTGl0ZSBEYXRhYmFzZSIgIkVtYmVkZGVkIFNRTGl0ZSBkYXRhYmFzZSBzdG9yaW5nIGZlZWRiYWNrLCBwcm9qZWN0cywgQVBJIGtleXMsIG1lc3NhZ2VzLCBhdWRpdCByZWNvcmRzLCBhbmQgbWV0YWRhdGEuIiAiU1FMaXRlIgoKICAgICAgICAgICAgYXBpQ29uc3VtZXIgLT4gd2ViQXBpICJVc2VzIGZlZWRiYWNrIGVuZHBvaW50cyB2aWEgeC1hcGkta2V5IG92ZXIgSFRUUFMiCiAgICAgICAgICAgIGFkbWluVXNlciAtPiB3ZWJBcGkgIlVzZXMgYWRtaW4gZmVlZGJhY2sgYW5kIGJvb3RzdHJhcCBtYW5hZ2VtZW50IGVuZHBvaW50cyBvdmVyIEhUVFBTIgoKICAgICAgICAgICAgd2ViQXBpIC0+IHNxbGl0ZSAiUmVhZHMgYW5kIHdyaXRlcyBhcHBsaWNhdGlvbiBkYXRhIgoKICAgICAgICAgICAgd2ViQXBpIC0+IGdpdExhYiAiQ3JlYXRlcyBhbmQgdXBkYXRlcyBwcm9tb3RlZCBpc3N1ZXMgdmlhIEFQSSIKICAgICAgICAgICAgd2ViQXBpIC0+IHNtdHBQcm92aWRlciAiU2VuZHMgcmVwbHkgbm90aWZpY2F0aW9uIGVtYWlscyB2aWEgU01UUCIKICAgICAgICB9CgogICAgICAgIG9wZXJhdG9yIC0+IGdpdEh1YkFjdGlvbnMgIlB1c2hlcyBicmFuY2hlcyBhbmQgdmVyc2lvbiB0YWdzIgogICAgICAgIG9wZXJhdG9yIC0+IGdpdEh1YkNvbnRhaW5lclJlZ2lzdHJ5ICJQdWxscyByZWxlYXNlZCBEb2NrZXIgaW1hZ2VzIgoKICAgICAgICBnaXRIdWJBY3Rpb25zIC0+IGdpdEh1YkNvbnRhaW5lclJlZ2lzdHJ5ICJQdWJsaXNoZXMgdGFnZ2VkIG11bHRpLWFyY2hpdGVjdHVyZSBEb2NrZXIgaW1hZ2VzIgoKICAgICAgICBkZXBsb3ltZW50RW52aXJvbm1lbnQgImRvY2tlci1kZXBsb3ltZW50IiB7CiAgICAgICAgICAgIGRlcGxveW1lbnROb2RlICJIb3N0IE1hY2hpbmUiICJMaW51eCBzZXJ2ZXIgb3IgQXBwbGUgU2lsaWNvbiBNYWMgcnVubmluZyBEb2NrZXIiICJEb2NrZXIgRW5naW5lIiB7CiAgICAgICAgICAgICAgICBkZXBsb3ltZW50Tm9kZSAiZmVlZGJhY2stYXBwIGNvbnRhaW5lciIgIkFwcGxpY2F0aW9uIGNvbnRhaW5lciBzdGFydGVkIGZyb20gdGhlIHB1Ymxpc2hlZCBpbWFnZSIgIkNvbnRhaW5lciIgewogICAgICAgICAgICAgICAgICAgIGNvbnRhaW5lckluc3RhbmNlIHdlYkFwaQogICAgICAgICAgICAgICAgICAgIGNvbnRhaW5lckluc3RhbmNlIHNxbGl0ZQogICAgICAgICAgICAgICAgfQoKICAgICAgICAgICAgICAgIGluZnJhc3RydWN0dXJlTm9kZSAiZmVlZGJhY2tfZGF0YSB2b2x1bWUiICJQZXJzaXN0ZW50IERvY2tlciB2b2x1bWUgbW91bnRlZCBhdCAvYXBwL2RhdGEiCiAgICAgICAgICAgIH0KICAgICAgICB9CiAgICB9CgogICAgdmlld3MgewoKICAgICAgICBzeXN0ZW1Db250ZXh0IGZlZWRiYWNrQXBpICJzeXN0ZW0tY29udGV4dCIgIkhvdyB1c2VycyBhbmQgZXh0ZXJuYWwgc2VydmljZXMgaW50ZXJhY3Qgd2l0aCB0aGUgZmVlZGJhY2sgcGxhdGZvcm0uIiB7CiAgICAgICAgICAgIGluY2x1ZGUgKgogICAgICAgICAgICBhdXRvTGF5b3V0IGxyCiAgICAgICAgfQoKICAgICAgICBjb250YWluZXIgZmVlZGJhY2tBcGkgImNvbnRhaW5lcnMiICJSdW50aW1lIGNvbnRhaW5lcnMgaW5zaWRlIHRoZSBmZWVkYmFjayBwbGF0Zm9ybS4iIHsKICAgICAgICAgICAgaW5jbHVkZSAqCiAgICAgICAgICAgIGF1dG9MYXlvdXQgbHIKICAgICAgICB9CgogICAgICAgIGRlcGxveW1lbnQgZmVlZGJhY2tBcGkgImRvY2tlci1kZXBsb3ltZW50IiAiZG9ja2VyLXZpZXciICJEb2NrZXItYmFzZWQgZGVwbG95bWVudCB1c2VkIGxvY2FsbHkgYW5kIGluIHJlbGVhc2VkIGNvbnRhaW5lciBpbWFnZXMuIiB7CiAgICAgICAgICAgIGluY2x1ZGUgKgogICAgICAgICAgICBhdXRvTGF5b3V0IGxyCiAgICAgICAgfQoKICAgICAgICBzdHlsZXMgewoKICAgICAgICAgICAgZWxlbWVudCAiUGVyc29uIiB7CiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICMwYjcyODUKICAgICAgICAgICAgICAgIGNvbG9yICNmZmZmZmYKICAgICAgICAgICAgICAgIHNoYXBlIHBlcnNvbgogICAgICAgICAgICAgICAgZm9udFNpemUgMzMKICAgICAgICAgICAgfQoKICAgICAgICAgICAgZWxlbWVudCAiU29mdHdhcmUgU3lzdGVtIiB7CiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICMxOTcxYzIKICAgICAgICAgICAgICAgIGNvbG9yICNmZmZmZmYKICAgICAgICAgICAgICAgIGZvbnRTaXplIDMyCiAgICAgICAgICAgIH0KCiAgICAgICAgICAgIGVsZW1lbnQgIkNvbnRhaW5lciIgewogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjNDI2M2ViCiAgICAgICAgICAgICAgICBjb2xvciAjZmZmZmZmCiAgICAgICAgICAgICAgICBmb250U2l6ZSAzMgogICAgICAgICAgICB9CgogICAgICAgICAgICBlbGVtZW50ICJJbmZyYXN0cnVjdHVyZSBOb2RlIiB7CiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICM0OTUwNTcKICAgICAgICAgICAgICAgIGNvbG9yICNmZmZmZmYKICAgICAgICAgICAgICAgIGZvbnRTaXplIDMyCiAgICAgICAgICAgIH0KCiAgICAgICAgICAgIGVsZW1lbnQgIkRlcGxveW1lbnQgTm9kZSIgewogICAgICAgICAgICAgICAgZm9udFNpemUgMzIKICAgICAgICAgICAgfQoKICAgICAgICAKCiAgICAgICAgfQoKICAgICAgICB0aGVtZSBkZWZhdWx0CiAgICB9Cn0=",
+    "structurizr.inspection.info" : "0",
+    "structurizr.inspection.ignore" : "0",
+    "structurizr.inspection.warning" : "0"
+  },
+  "views" : {
+    "configuration" : {
+      "styles" : {
+        "elements" : [ {
+          "background" : "#4263eb",
+          "color" : "#ffffff",
+          "fontSize" : 32,
+          "tag" : "Container"
+        }, {
+          "fontSize" : 32,
+          "tag" : "Deployment Node"
+        }, {
+          "background" : "#495057",
+          "color" : "#ffffff",
+          "fontSize" : 32,
+          "tag" : "Infrastructure Node"
+        }, {
+          "background" : "#0b7285",
+          "color" : "#ffffff",
+          "fontSize" : 33,
+          "shape" : "Person",
+          "tag" : "Person"
+        }, {
+          "background" : "#1971c2",
+          "color" : "#ffffff",
+          "fontSize" : 32,
+          "tag" : "Software System"
+        } ]
+      },
+      "terminology" : { },
+      "themes" : [ "https://static.structurizr.com/themes/default/theme.json" ]
+    },
+    "containerViews" : [ {
+      "automaticLayout" : {
+        "edgeSeparation" : 50,
+        "nodeSeparation" : 50,
+        "rankDirection" : "LeftRight",
+        "rankSeparation" : 100,
+        "vertices" : true
+      },
+      "description" : "Runtime containers inside the feedback platform.",
+      "elements" : [ {
+        "id" : "1",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "2",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "6",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "7",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "9",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "10",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "externalSoftwareSystemBoundariesVisible" : false,
+      "key" : "containers",
+      "name" : "Container View: DMTC Feedback API",
+      "order" : 2,
+      "relationships" : [ {
+        "id" : "11"
+      }, {
+        "id" : "13"
+      }, {
+        "id" : "15"
+      }, {
+        "id" : "16"
+      }, {
+        "id" : "18"
+      } ],
+      "softwareSystemId" : "8"
+    } ],
+    "deploymentViews" : [ {
+      "automaticLayout" : {
+        "edgeSeparation" : 50,
+        "nodeSeparation" : 50,
+        "rankDirection" : "LeftRight",
+        "rankSeparation" : 100,
+        "vertices" : true
+      },
+      "description" : "Docker-based deployment used locally and in released container images.",
+      "elements" : [ {
+        "id" : "23",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "24",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "25",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "26",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "28",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "environment" : "docker-deployment",
+      "key" : "docker-view",
+      "name" : "Deployment View: DMTC Feedback API - docker-deployment",
+      "order" : 3,
+      "relationships" : [ {
+        "id" : "27"
+      } ],
+      "softwareSystemId" : "8"
+    } ],
+    "systemContextViews" : [ {
+      "automaticLayout" : {
+        "edgeSeparation" : 50,
+        "nodeSeparation" : 50,
+        "rankDirection" : "LeftRight",
+        "rankSeparation" : 100,
+        "vertices" : true
+      },
+      "description" : "How users and external services interact with the feedback platform.",
+      "elements" : [ {
+        "id" : "1",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "2",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "6",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "7",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "8",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "enterpriseBoundaryVisible" : true,
+      "key" : "system-context",
+      "name" : "System Context View: DMTC Feedback API",
+      "order" : 1,
+      "relationships" : [ {
+        "id" : "12"
+      }, {
+        "id" : "14"
+      }, {
+        "id" : "17"
+      }, {
+        "id" : "19"
+      } ],
+      "softwareSystemId" : "8"
+    } ]
+  }
+}

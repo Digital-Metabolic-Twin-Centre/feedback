@@ -11,6 +11,14 @@ Headless feedback management backend built with Next.js route handlers and SQLit
 - OpenAPI JSON and Swagger UI docs
 - SQLite-backed storage with hashed API keys
 
+## Architecture
+
+Project container architecture generated with Structurizr:
+
+![Feedback Headless API container architecture](./diagrams/img/containers.png)
+
+Additional generated diagrams are available in [`diagrams/`](./diagrams), including the system context and Docker deployment views.
+
 ## Route Map
 
 ### Platform
