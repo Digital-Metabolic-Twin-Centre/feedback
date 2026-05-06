@@ -1,4 +1,4 @@
-workspace "DMTC  Headless Feedback API" "Architecture diagrams for the feedback management API service." {
+workspace "DMTC  Headless Feedback" "Architecture diagrams for the feedback management API service." {
 
     model {
         apiConsumer = person "API Consumer" "Submits feedback and reads project-scoped feedback threads."
