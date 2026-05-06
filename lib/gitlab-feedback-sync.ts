@@ -9,7 +9,7 @@ import {
 } from "@/lib/feedback/sqlite-queries";
 
 const GITLAB_API_BASE = "https://gitlab.com/api/v4";
-const FEEDBACK_LABEL_PREFIX = "imdhub-feedback";
+const FEEDBACK_LABEL_PREFIX = "dmtc-feedback";
 
 function requireGitLabConfig(): { token: string; projectId: string } {
   const token = env.GITLAB_ISSUES_REPORTING_TOKEN;
@@ -36,11 +36,11 @@ function getFeedbackLabel(feedbackId: number) {
 }
 
 function feedbackMarker(feedbackId: number) {
-  return `<!-- imdhub-feedback-id:${feedbackId} -->`;
+  return `<!-- dmtc-feedback-id:${feedbackId} -->`;
 }
 
 function messageMarker(messageId: number) {
-  return `<!-- imdhub-feedback-message-id:${messageId} -->`;
+  return `<!-- dmtc-feedback-message-id:${messageId} -->`;
 }
 
 async function gitlabRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -197,7 +197,7 @@ async function reopenIssue(issueIid: number) {
 }
 
 function extractMarkersFromText(text: string) {
-  const markerRegex = /imdhub-feedback-message-id:(\d+)/g;
+  const markerRegex = /dmtc-feedback-message-id:(\d+)/g;
   const markers = new Set<number>();
   let match = markerRegex.exec(text);
   while (match) {
@@ -262,12 +262,12 @@ export async function syncPromotedFeedbackToGitLab(feedbackId: number) {
     notesCreated += 1;
   }
 
-  const isClosedInImdhub = feedback.feedback_status_name?.toLowerCase() === "closed";
+  const isClosedInDmtc = feedback.feedback_status_name?.toLowerCase() === "closed";
   const isClosedInGitlab = issue.state === "closed";
 
-  if (isClosedInImdhub && !isClosedInGitlab) {
+  if (isClosedInDmtc && !isClosedInGitlab) {
     issue = await closeIssue(issue.iid);
-  } else if (!isClosedInImdhub && isClosedInGitlab) {
+  } else if (!isClosedInDmtc && isClosedInGitlab) {
     issue = await reopenIssue(issue.iid);
   }
 

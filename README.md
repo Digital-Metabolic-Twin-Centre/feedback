@@ -1,4 +1,4 @@
-# DMTC  Headless Feedback API
+# DMTC  Headless Feedback
 
 Headless feedback management backend built with Next.js route handlers and SQLite.
 
@@ -12,10 +12,7 @@ Headless feedback management backend built with Next.js route handlers and SQLit
 - SQLite-backed storage with hashed API keys
 
 ## Architecture
-
-Project container architecture generated with Structurizr:
-
-![DMTC  Headless Feedback API container architecture](./diagrams/img/system-context.png)
+![DMTC  Headless Feedback container architecture](./diagrams/img/system-context.png)
 
 Additional generated diagrams are available in [`diagrams/`](./diagrams), including the system context and Docker deployment views.
 
