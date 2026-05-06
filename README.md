@@ -15,7 +15,7 @@ Headless feedback management backend built with Next.js route handlers and SQLit
 
 Project container architecture generated with Structurizr:
 
-![Feedback Headless API container architecture](./diagrams/img/containers.png)
+![Feedback Headless API container architecture](./diagrams/img/system-context.png)
 
 Additional generated diagrams are available in [`diagrams/`](./diagrams), including the system context and Docker deployment views.
 
