@@ -98,6 +98,33 @@ npm run clean
 npm run dev
 ```
 
+## Docker Releases
+
+Pushing a Git tag that starts with `v`, such as `v0.4.0`, triggers GitHub Actions to publish a Docker image to GitHub Container Registry.
+The published image is multi-architecture and supports both `linux/amd64` and `linux/arm64`, which covers typical Linux servers and Apple Silicon Macs.
+
+Pull the published image:
+
+```bash
+docker pull ghcr.io/<owner>/<repo>:v0.4.0
+```
+
+Run it directly with Docker:
+
+```bash
+docker run --rm -p 4001:4001 \
+  -e NEXTAUTH_SECRET="$(openssl rand -base64 32)" \
+  -e NEXTAUTH_URL="http://localhost:4001" \
+  -e NEXT_PUBLIC_APP_URL="http://localhost:4001" \
+  -e NEXT_PUBLIC_FEEDBACK_API_URL="http://localhost:4001" \
+  -e FEEDBACK_BOOTSTRAP_TOKEN="$(openssl rand -hex 24)" \
+  -e SQLITE_PATH="./data/feedback.db" \
+  -e MAIL_PROVIDER="disabled" \
+  ghcr.io/<owner>/<repo>:v0.4.0
+```
+
+Available image tags include the full tag version like `v0.4.0`, the normalized semver version like `0.4.0`, the `major.minor` tag like `0.4`, and `latest`.
+
 ## Bootstrap Setup
 
 Create an admin API key:
