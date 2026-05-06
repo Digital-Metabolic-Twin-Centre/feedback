@@ -16,11 +16,20 @@ const html = `<!doctype html>
   <div id="swagger-ui"></div>
   <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
   <script>
+    const tagOrder = ['Feedback', 'Admin Feedback', 'Bootstrap Admin', 'Documentation'];
     window.ui = SwaggerUIBundle({
       url: '/api/v1/openapi.json',
       dom_id: '#swagger-ui',
       deepLinking: true,
       persistAuthorization: true,
+      tagsSorter: (a, b) => {
+        const left = tagOrder.indexOf(a);
+        const right = tagOrder.indexOf(b);
+        if (left === -1 && right === -1) return a.localeCompare(b);
+        if (left === -1) return 1;
+        if (right === -1) return -1;
+        return left - right;
+      },
     });
   </script>
 </body>

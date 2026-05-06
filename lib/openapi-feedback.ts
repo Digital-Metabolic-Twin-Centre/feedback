@@ -18,6 +18,24 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
       description: "Versioned REST API for feedback submission and admin workflows.",
     },
     servers: [{ url: serverUrl }],
+    tags: [
+      {
+        name: "Feedback",
+        description: "Project-scoped feedback submission and follow-up routes that require `x-api-key`.",
+      },
+      {
+        name: "Admin Feedback",
+        description: "Admin feedback review and thread management routes that require an admin API key.",
+      },
+      {
+        name: "Bootstrap Admin",
+        description: "Bootstrap-token protected project and API key management routes.",
+      },
+      {
+        name: "Documentation",
+        description: "OpenAPI and Swagger UI documentation endpoints.",
+      },
+    ],
     components: {
       securitySchemes: {
         ApiKeyAuth: {
@@ -46,6 +64,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
     paths: {
       "/api/v1/feedback": {
         post: {
+          tags: ["Feedback"],
           summary: "Submit feedback",
           security: [{ ApiKeyAuth: [] }],
           parameters: [apiKeyHeaderParameter],
@@ -66,6 +85,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
       },
       "/api/v1/feedback/{id}": {
         get: {
+          tags: ["Feedback"],
           summary: "Get feedback by id (project scoped)",
           security: [{ ApiKeyAuth: [] }],
           parameters: [
@@ -89,6 +109,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           },
         },
         post: {
+          tags: ["Feedback"],
           summary: "Add follow-up message to feedback thread (project scoped)",
           security: [{ ApiKeyAuth: [] }],
           parameters: [
@@ -127,6 +148,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
       },
       "/api/v1/feedback/meta": {
         get: {
+          tags: ["Feedback"],
           summary: "Reference data for feedback form",
           security: [{ ApiKeyAuth: [] }],
           parameters: [apiKeyHeaderParameter],
@@ -137,6 +159,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
       },
       "/api/v1/admin/feedback": {
         get: {
+          tags: ["Admin Feedback"],
           summary: "List feedback (admin key)",
           security: [{ ApiKeyAuth: [] }],
           parameters: [
@@ -159,6 +182,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
       },
       "/api/v1/admin/feedback/{id}": {
         get: {
+          tags: ["Admin Feedback"],
           summary: "Get feedback detail (admin key)",
           security: [{ ApiKeyAuth: [] }],
           parameters: [
@@ -176,6 +200,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           },
         },
         patch: {
+          tags: ["Admin Feedback"],
           summary: "Update feedback by action (admin key)",
           security: [{ ApiKeyAuth: [] }],
           parameters: [
@@ -212,6 +237,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
       },
       "/api/v1/admin/feedback/{id}/messages": {
         get: {
+          tags: ["Admin Feedback"],
           summary: "List feedback thread messages (admin key)",
           security: [{ ApiKeyAuth: [] }],
           parameters: [
@@ -229,6 +255,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           },
         },
         post: {
+          tags: ["Admin Feedback"],
           summary: "Add admin thread message (admin key)",
           security: [{ ApiKeyAuth: [] }],
           parameters: [
@@ -263,6 +290,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
       },
       "/api/v1/admin/projects": {
         get: {
+          tags: ["Bootstrap Admin"],
           summary: "List projects (bootstrap token required)",
           parameters: [
             {
@@ -283,6 +311,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           },
         },
         post: {
+          tags: ["Bootstrap Admin"],
           summary: "Create project (bootstrap token required)",
           parameters: [
             {
@@ -315,6 +344,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
       },
       "/api/v1/admin/keys": {
         get: {
+          tags: ["Bootstrap Admin"],
           summary: "List API keys (bootstrap token required)",
           parameters: [
             {
@@ -341,6 +371,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           },
         },
         post: {
+          tags: ["Bootstrap Admin"],
           summary: "Generate API key (bootstrap token required)",
           parameters: [
             {
@@ -390,31 +421,10 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           },
         },
       },
-      "/api/v1/admin/keys/{id}": {
-        delete: {
-          summary: "Revoke API key by id (bootstrap token required)",
-          parameters: [
-            {
-              name: "x-bootstrap-token",
-              in: "header",
-              required: true,
-              schema: { type: "string" },
-            },
-            {
-              name: "id",
-              in: "path",
-              required: true,
-              schema: { type: "integer", minimum: 1 },
-            },
-          ],
-          responses: {
-            "200": { description: "Revoked" },
-            "404": { description: "Not found" },
-          },
-        },
-      },
+
       "/api/v1/admin/keys/{id}/rotate": {
         post: {
+          tags: ["Bootstrap Admin"],
           summary: "Rotate API key by id (bootstrap token required)",
           parameters: [
             {
@@ -436,11 +446,43 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           },
         },
       },
+      "/api/v1/admin/keys/{id}": {
+        delete: {
+          tags: ["Bootstrap Admin"],
+          summary: "Revoke API key by id (bootstrap token required)",
+          parameters: [
+            {
+              name: "x-bootstrap-token",
+              in: "header",
+              required: true,
+              schema: { type: "string" },
+            },
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+            },
+          ],
+          responses: {
+            "200": { description: "Revoked" },
+            "404": { description: "Not found" },
+          },
+        },
+      },
       "/api/v1/openapi.json": {
-        get: { summary: "OpenAPI spec", responses: { "200": { description: "spec" } } },
+        get: {
+          tags: ["Documentation"],
+          summary: "OpenAPI spec",
+          responses: { "200": { description: "spec" } },
+        },
       },
       "/api/v1/docs": {
-        get: { summary: "Swagger UI", responses: { "200": { description: "HTML docs" } } },
+        get: {
+          tags: ["Documentation"],
+          summary: "Swagger UI",
+          responses: { "200": { description: "HTML docs" } },
+        },
       },
     },
   };

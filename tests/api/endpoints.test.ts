@@ -123,22 +123,45 @@ describe("Headless API endpoints", () => {
     expect(openApiRes.status).toBe(200);
     const spec = await openApiRes.json() as {
       info: { version: string };
+      tags?: Array<{ name: string }>;
       paths: {
         "/api/v1/feedback/{id}": {
-          get: { parameters?: Array<{ name: string; in: string }> };
+          get: { parameters?: Array<{ name: string; in: string }>; tags?: string[] };
         };
         "/api/v1/feedback/meta": {
-          get: { parameters?: Array<{ name: string; in: string }> };
+          get: { parameters?: Array<{ name: string; in: string }>; tags?: string[] };
+        };
+        "/api/v1/admin/feedback": {
+          get: { tags?: string[] };
+        };
+        "/api/v1/admin/keys": {
+          get: { tags?: string[] };
+        };
+        "/api/v1/openapi.json": {
+          get: { tags?: string[] };
         };
       };
     };
     expect(spec.info.version).toBeDefined();
+    expect(spec.tags).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Feedback" }),
+        expect.objectContaining({ name: "Admin Feedback" }),
+        expect.objectContaining({ name: "Bootstrap Admin" }),
+        expect.objectContaining({ name: "Documentation" }),
+      ])
+    );
     expect(spec.paths["/api/v1/feedback/{id}"].get.parameters).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: "x-api-key", in: "header" })])
     );
+    expect(spec.paths["/api/v1/feedback/{id}"].get.tags).toEqual(["Feedback"]);
     expect(spec.paths["/api/v1/feedback/meta"].get.parameters).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: "x-api-key", in: "header" })])
     );
+    expect(spec.paths["/api/v1/feedback/meta"].get.tags).toEqual(["Feedback"]);
+    expect(spec.paths["/api/v1/admin/feedback"].get.tags).toEqual(["Admin Feedback"]);
+    expect(spec.paths["/api/v1/admin/keys"].get.tags).toEqual(["Bootstrap Admin"]);
+    expect(spec.paths["/api/v1/openapi.json"].get.tags).toEqual(["Documentation"]);
 
     const res: MockNextApiResponse = {
       headers: {},
@@ -155,6 +178,7 @@ describe("Headless API endpoints", () => {
     docsHandler(docsReq, res);
     expect(res.statusCode).toBe(200);
     expect(String(res.body)).toContain("SwaggerUIBundle");
+    expect(String(res.body)).toContain("const tagOrder = ['Feedback', 'Admin Feedback', 'Bootstrap Admin', 'Documentation'];");
   });
 
   test("bootstrap-protected keys and projects routes", async () => {
