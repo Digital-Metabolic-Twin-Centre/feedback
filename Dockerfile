@@ -1,11 +1,11 @@
 # Install dependencies (only prod for runtime)
-FROM node:22-alpine AS deps
+FROM node:22-bookworm-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci --omit=dev && npm cache clean --force
 
 # Build stage
-FROM node:22-alpine AS builder
+FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 
 # Ensure devDependencies are installed in this stage
@@ -32,14 +32,9 @@ RUN node -e "console.log('TypeScript:', require('typescript').version)"
 # Ensure clean build by removing any copied .next directory
 RUN rm -rf .next
 
-ENV SKIP_ENV_VALIDATION=true
-
-# Dummy environment values to satisfy Zod / env validation during build
-ENV NEXTAUTH_SECRET="dummy-secret-for-build-only"
 ENV NEXTAUTH_URL="http://localhost:4001"
 ENV NEXT_PUBLIC_APP_URL="http://localhost:4001"
 ENV NEXT_PUBLIC_FEEDBACK_API_URL="http://localhost:4001"
-ENV FEEDBACK_BOOTSTRAP_TOKEN="dummy-bootstrap-token"
 ENV SQLITE_PATH="./data/feedback.db"
 ENV MAIL_PROVIDER="disabled"
 ENV SMTP_HOST="localhost"
@@ -47,25 +42,27 @@ ENV SMTP_PORT="25"
 ENV SMTP_USER="dummy"
 ENV SMTP_PASS="dummy"
 ENV SMTP_FROM="dummy@example.com"
-ENV GITLAB_ISSUES_REPORTING_TOKEN="dummy"
 ENV GITLAB_REPORTING_PROJECT_ID="dummy"
 
 # Memory tweak for Next build
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
-ENV SKIP_ENV_VALIDATION=true
-
-# Set dummy secret only for build process without storing in image
-RUN npm run build
+RUN SKIP_ENV_VALIDATION=true \
+    NEXTAUTH_SECRET="dummy-secret-for-build-only" \
+    FEEDBACK_BOOTSTRAP_TOKEN="dummy-bootstrap-token" \
+    GITLAB_ISSUES_REPORTING_TOKEN="dummy" \
+    npm run build
 
 RUN rm -f .env .env.local || true
 
 # Production runtime
-FROM node:22-alpine AS runner
+FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 
 # Install runtime utilities
-RUN apk add --no-cache bash curl
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends bash curl ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
 
 # Copy only required artifacts
 COPY --from=deps /app/node_modules ./node_modules
