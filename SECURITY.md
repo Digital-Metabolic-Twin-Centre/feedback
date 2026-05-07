@@ -2,12 +2,20 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
+| Version | Supported |
+| ------- | --------- |
+| latest  | ✅        |
+
+Only the latest release receives security updates and support.
 
 ## Reporting a Vulnerability
 
 Please report security vulnerabilities privately to the project maintainers.
-Include clear reproduction steps, impact, and affected versions.
-We will acknowledge valid reports as soon as possible and share remediation updates directly.
+
+When reporting an issue, include:
+- reproduction steps
+- potential impact
+- affected versions
+- any relevant logs or proof-of-concept details
+
+Valid reports will be acknowledged as soon as possible, and remediation updates will be shared directly with the reporter where appropriate.
