@@ -19,6 +19,7 @@ const referencePayloadSchema = z.object({
   name: z.string().min(1).optional(),
   label: z.string().nullable().optional(),
   country: z.string().nullable().optional(),
+  order: z.number().int().min(0).optional(),
   draft: booleanLike.optional(),
   softDelete: booleanLike.optional(),
   createdBy: z.string().nullable().optional(),
@@ -28,6 +29,7 @@ const referencePayloadSchema = z.object({
 const projectPayloadSchema = z.object({
   slug: z.string().min(1).optional(),
   name: z.string().min(1).optional(),
+  order: z.number().int().min(0).optional(),
   draft: booleanLike.optional(),
   softDelete: booleanLike.optional(),
 });
@@ -36,12 +38,14 @@ const apiKeyCreatePayloadSchema = z.object({
   projectSlug: z.string().optional(),
   projectName: z.string().optional(),
   keyName: z.string().optional(),
+  order: z.number().int().min(0).optional(),
   isAdmin: z.boolean().optional(),
 });
 
 const apiKeyUpdatePayloadSchema = z.object({
   name: z.string().min(1).optional(),
   projectId: z.number().int().positive().optional(),
+  order: z.number().int().min(0).optional(),
   isAdmin: booleanLike.optional(),
   draft: booleanLike.optional(),
   softDelete: booleanLike.optional(),
@@ -51,6 +55,7 @@ type ReferenceSummary = {
   id: number;
   name: string;
   label: string | null;
+  order: number;
   draft: boolean;
   softDelete: boolean;
   createdBy: string | null;
@@ -61,6 +66,7 @@ type ReferenceSummary = {
 };
 
 type ApiKeyDetail = ApiKeySummary & {
+  order: number;
   draft: boolean;
   softDelete: boolean;
 };
@@ -105,6 +111,7 @@ function normalizeProjectRow(row: {
   id: number;
   slug: string;
   name: string;
+  order: number;
   draft: number;
   soft_delete: number;
   created_at: string;
@@ -114,6 +121,7 @@ function normalizeProjectRow(row: {
     id: row.id,
     slug: row.slug,
     name: row.name,
+    order: row.order,
     draft: Boolean(row.draft),
     softDelete: Boolean(row.soft_delete),
     createdAt: row.created_at,
@@ -127,15 +135,16 @@ function listReferenceRows(resource: keyof typeof referenceConfigs, includeArchi
   const where = includeArchived ? "" : "WHERE soft_delete = 0";
   const rows = db
     .prepare(
-      `SELECT id, name, label, draft, soft_delete, created_by, created_at, updated_by, updated_at${countrySelect}
+      `SELECT id, name, label, "order", draft, soft_delete, created_by, created_at, updated_by, updated_at${countrySelect}
        FROM ${config.table}
        ${where}
-       ORDER BY ${config.orderBy}`
+       ORDER BY "order" ASC, ${config.orderBy}`
     )
     .all() as Array<{
       id: number;
       name: string;
       label: string | null;
+      order: number;
       draft: number;
       soft_delete: number;
       created_by: string | null;
@@ -149,6 +158,7 @@ function listReferenceRows(resource: keyof typeof referenceConfigs, includeArchi
     id: row.id,
     name: row.name,
     label: row.label,
+    order: row.order,
     draft: Boolean(row.draft),
     softDelete: Boolean(row.soft_delete),
     createdBy: row.created_by,
@@ -175,6 +185,7 @@ function createReferenceRow(resource: keyof typeof referenceConfigs, payload: un
   assertReferenceNameIsUnique(resource, name);
   const label = parsed.data.label?.trim() || null;
   const country = config.hasCountry ? parsed.data.country?.trim() || null : null;
+  const sortOrder = parsed.data.order ?? 0;
   const createdBy = parsed.data.createdBy?.trim() || null;
   const updatedBy = parsed.data.updatedBy?.trim() || createdBy;
   const countryColumns = config.hasCountry ? ", country" : "";
@@ -183,14 +194,15 @@ function createReferenceRow(resource: keyof typeof referenceConfigs, payload: un
   const row = db
     .prepare(
       `INSERT INTO ${config.table} (
-         name, label, draft, soft_delete, created_by, created_at, updated_by, updated_at${countryColumns}
+         name, label, "order", draft, soft_delete, created_by, created_at, updated_by, updated_at${countryColumns}
        )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?${countryValues})
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?${countryValues})
        RETURNING id`
     )
     .get(
       name,
       label,
+      sortOrder,
       parsed.data.draft ? 1 : 0,
       parsed.data.softDelete ? 1 : 0,
       createdBy,
@@ -225,6 +237,10 @@ function updateReferenceRow(resource: keyof typeof referenceConfigs, id: number,
   if (parsed.data.label !== undefined) {
     updates.push("label = ?");
     params.push(parsed.data.label?.trim() || null);
+  }
+  if (parsed.data.order !== undefined) {
+    updates.push(`"order" = ?`);
+    params.push(parsed.data.order);
   }
   if (parsed.data.draft !== undefined) {
     updates.push("draft = ?");
@@ -275,7 +291,7 @@ function deleteReferenceRow(resource: keyof typeof referenceConfigs, id: number)
 function getProjectById(id: number): ProjectSummary | null {
   const row = db
     .prepare(
-      `SELECT id, slug, name, draft, soft_delete, created_at, updated_at
+      `SELECT id, slug, name, "order", draft, soft_delete, created_at, updated_at
        FROM projects
        WHERE id = ?
        LIMIT 1`
@@ -284,6 +300,7 @@ function getProjectById(id: number): ProjectSummary | null {
       id: number;
       slug: string;
       name: string;
+      order: number;
       draft: number;
       soft_delete: number;
       created_at: string;
@@ -314,6 +331,10 @@ function updateProjectById(id: number, payload: unknown): ProjectSummary | null 
     assertProjectUniqueness({ name, excludeId: id });
     updates.push("name = ?");
     params.push(name);
+  }
+  if (parsed.data.order !== undefined) {
+    updates.push(`"order" = ?`);
+    params.push(parsed.data.order);
   }
   if (parsed.data.draft !== undefined) {
     updates.push("draft = ?");
@@ -357,6 +378,7 @@ function getApiKeyById(id: number): ApiKeyDetail | null {
          p.slug AS project_slug,
          p.name AS project_name,
          k.name,
+         k."order",
          k.key_prefix,
          k.is_admin,
          k.draft,
@@ -375,6 +397,7 @@ function getApiKeyById(id: number): ApiKeyDetail | null {
       project_slug: string;
       project_name: string;
       name: string;
+      order: number;
       key_prefix: string;
       is_admin: number;
       draft: number;
@@ -392,6 +415,7 @@ function getApiKeyById(id: number): ApiKeyDetail | null {
     projectSlug: row.project_slug,
     projectName: row.project_name,
     name: row.name,
+    order: row.order,
     keyPrefix: row.key_prefix,
     isAdmin: Boolean(row.is_admin),
     revoked: Boolean(row.soft_delete),
@@ -421,6 +445,10 @@ function updateApiKeyById(id: number, payload: unknown): ApiKeyDetail | null {
   if (parsed.data.projectId !== undefined) {
     updates.push("project_id = ?");
     params.push(parsed.data.projectId);
+  }
+  if (parsed.data.order !== undefined) {
+    updates.push(`"order" = ?`);
+    params.push(parsed.data.order);
   }
   if (parsed.data.isAdmin !== undefined) {
     updates.push("is_admin = ?");
@@ -479,7 +507,7 @@ export function createMetaResource(resource: MetaResource, payload: unknown) {
       if (!parsed.success || !parsed.data.slug || !parsed.data.name) {
         throw new Error("Invalid request payload.");
       }
-      return createProject({ slug: parsed.data.slug, name: parsed.data.name });
+      return createProject({ slug: parsed.data.slug, name: parsed.data.name, order: parsed.data.order });
     }
     case "api_keys": {
       const parsed = apiKeyCreatePayloadSchema.safeParse(payload);
@@ -490,6 +518,7 @@ export function createMetaResource(resource: MetaResource, payload: unknown) {
         projectSlug: parsed.data.projectSlug,
         projectName: parsed.data.projectName,
         keyName: parsed.data.keyName,
+        order: parsed.data.order,
         isAdmin: parsed.data.isAdmin,
       });
     }

@@ -11,7 +11,7 @@ import type { FeedbackData, FeedbackThreadMessage } from "@/lib/feedback/types";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type RefRow = { id: number; name: string; label: string | null };
+export type RefRow = { id: number; name: string; label: string | null; order: number };
 
 export type InsertFeedbackInput = {
   project_id?: number | null;
@@ -37,9 +37,9 @@ export type UpdateFeedbackInput = {
 export function getFeedbackTypes(): RefRow[] {
   return db
     .prepare(
-      `SELECT id, name, label FROM feedback_types
+      `SELECT id, name, label, "order" FROM feedback_types
        WHERE soft_delete = 0 AND draft = 0
-       ORDER BY id ASC`
+       ORDER BY "order" ASC, id ASC`
     )
     .all() as RefRow[];
 }
@@ -47,9 +47,9 @@ export function getFeedbackTypes(): RefRow[] {
 export function getfeedbacktatuses(): RefRow[] {
   return db
     .prepare(
-      `SELECT id, name, label FROM feedback_status
+      `SELECT id, name, label, "order" FROM feedback_status
        WHERE soft_delete = 0 AND draft = 0
-       ORDER BY id ASC`
+       ORDER BY "order" ASC, id ASC`
     )
     .all() as RefRow[];
 }
@@ -58,7 +58,7 @@ export function getOrganisations(filters: Record<string, string> = {}): RefRow[]
   const isDraft = filters.draft === "true";
   const isTrashed = filters.soft_delete === "true";
 
-  let sql = `SELECT id, name, label, country FROM organisations`;
+  let sql = `SELECT id, name, label, "order", country FROM organisations`;
   if (isTrashed) {
     sql += ` WHERE soft_delete = 1`;
   } else if (isDraft) {
@@ -66,7 +66,7 @@ export function getOrganisations(filters: Record<string, string> = {}): RefRow[]
   } else {
     sql += ` WHERE soft_delete = 0 AND draft = 0`;
   }
-  sql += ` ORDER BY name ASC`;
+  sql += ` ORDER BY "order" ASC, name ASC, id ASC`;
 
   return db.prepare(sql).all() as RefRow[];
 }

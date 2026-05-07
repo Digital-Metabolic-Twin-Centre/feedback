@@ -4,6 +4,7 @@ export type ProjectSummary = {
   id: number;
   slug: string;
   name: string;
+  order: number;
   draft: boolean;
   softDelete: boolean;
   createdAt: string;
@@ -54,15 +55,16 @@ function projectExistsByName(name: string, excludeId?: number): boolean {
 export function listProjects(includeArchived = false): ProjectSummary[] {
   const rows = db
     .prepare(
-      `SELECT id, slug, name, draft, soft_delete, created_at, updated_at
+      `SELECT id, slug, name, "order", draft, soft_delete, created_at, updated_at
        FROM projects
        ${includeArchived ? "" : "WHERE soft_delete = 0"}
-       ORDER BY slug ASC`
+       ORDER BY "order" ASC, slug ASC, id ASC`
     )
     .all() as Array<{
     id: number;
     slug: string;
     name: string;
+    order: number;
     draft: number;
     soft_delete: number;
     created_at: string;
@@ -73,6 +75,7 @@ export function listProjects(includeArchived = false): ProjectSummary[] {
     id: row.id,
     slug: row.slug,
     name: row.name,
+    order: row.order,
     draft: Boolean(row.draft),
     softDelete: Boolean(row.soft_delete),
     createdAt: row.created_at,
@@ -80,7 +83,7 @@ export function listProjects(includeArchived = false): ProjectSummary[] {
   }));
 }
 
-export function createProject(input: { slug: string; name: string }): ProjectSummary {
+export function createProject(input: { slug: string; name: string; order?: number }): ProjectSummary {
   const slug = normalizeSlug(input.slug);
   const name = input.name.trim();
   if (!slug) {
@@ -91,6 +94,7 @@ export function createProject(input: { slug: string; name: string }): ProjectSum
   }
 
   const now = new Date().toISOString();
+  const sortOrder = input.order ?? 0;
   if (projectExistsBySlug(slug)) {
     throw new Error("Project slug already exists.");
   }
@@ -100,14 +104,15 @@ export function createProject(input: { slug: string; name: string }): ProjectSum
 
   const row = db
     .prepare(
-      `INSERT INTO projects (slug, name, created_at, updated_at)
-       VALUES (?, ?, ?, ?)
-       RETURNING id, slug, name, draft, soft_delete, created_at, updated_at`
+      `INSERT INTO projects (slug, name, "order", created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?)
+       RETURNING id, slug, name, "order", draft, soft_delete, created_at, updated_at`
     )
-    .get(slug, name, now, now) as {
+    .get(slug, name, sortOrder, now, now) as {
     id: number;
     slug: string;
     name: string;
+    order: number;
     draft: number;
     soft_delete: number;
     created_at: string;
@@ -118,6 +123,7 @@ export function createProject(input: { slug: string; name: string }): ProjectSum
     id: row.id,
     slug: row.slug,
     name: row.name,
+    order: row.order,
     draft: Boolean(row.draft),
     softDelete: Boolean(row.soft_delete),
     createdAt: row.created_at,

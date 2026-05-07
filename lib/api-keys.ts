@@ -23,6 +23,7 @@ export type ApiKeySummary = {
   projectSlug: string;
   projectName: string;
   name: string;
+  order: number;
   keyPrefix: string;
   isAdmin: boolean;
   revoked: boolean;
@@ -82,7 +83,7 @@ function getFirstActiveProject(): { id: number; slug: string; name: string } | n
       `SELECT id, slug, name
        FROM projects
        WHERE soft_delete = 0
-       ORDER BY id ASC
+       ORDER BY "order" ASC, id ASC
        LIMIT 1`
     )
     .get() as { id: number; slug: string; name: string } | undefined;
@@ -111,6 +112,7 @@ export function createApiKeyForProject(input?: {
   projectSlug?: string;
   projectName?: string;
   keyName?: string;
+  order?: number;
   isAdmin?: boolean;
 }): {
   apiKey: string;
@@ -119,6 +121,7 @@ export function createApiKeyForProject(input?: {
   projectSlug: string;
   projectName: string;
   keyId: number;
+  order: number;
   isAdmin: boolean;
 } {
   const project =
@@ -130,18 +133,20 @@ export function createApiKeyForProject(input?: {
   const keyHash = hashApiKey(apiKey);
   const now = new Date().toISOString();
   const keyName = input?.keyName?.trim() || "default-key";
+  const sortOrder = input?.order ?? 0;
 
   assertApiKeyNameIsUnique(keyName);
 
   const row = db
     .prepare(
-      `INSERT INTO api_keys (project_id, name, key_prefix, key_hash, is_admin, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO api_keys (project_id, name, "order", key_prefix, key_hash, is_admin, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        RETURNING id`
     )
     .get(
       project.id,
       keyName,
+      sortOrder,
       keyPrefix,
       keyHash,
       input?.isAdmin ? 1 : 0,
@@ -156,6 +161,7 @@ export function createApiKeyForProject(input?: {
     projectSlug: project.slug,
     projectName: project.name,
     keyId: row.id,
+    order: sortOrder,
     isAdmin: Boolean(input?.isAdmin),
   };
 }
@@ -234,6 +240,7 @@ export function rotateApiKeyById(keyId: number): {
          k.id,
          k.project_id,
          k.name,
+         k."order",
          k.is_admin,
          p.slug AS project_slug,
          p.name AS project_name
@@ -246,6 +253,7 @@ export function rotateApiKeyById(keyId: number): {
     id: number;
     project_id: number;
     name: string;
+    order: number;
     is_admin: number;
     project_slug: string;
     project_name: string;
@@ -265,13 +273,14 @@ export function rotateApiKeyById(keyId: number): {
 
     const inserted = db
       .prepare(
-        `INSERT INTO api_keys (project_id, name, key_prefix, key_hash, is_admin, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO api_keys (project_id, name, "order", key_prefix, key_hash, is_admin, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
          RETURNING id`
       )
       .get(
         existing.project_id,
         existing.name,
+        existing.order,
         keyPrefix,
         keyHash,
         existing.is_admin,
@@ -322,6 +331,7 @@ export function listApiKeys(filters?: {
          p.slug AS project_slug,
          p.name AS project_name,
          k.name,
+         k."order",
          k.key_prefix,
          k.is_admin,
          k.soft_delete,
@@ -331,7 +341,7 @@ export function listApiKeys(filters?: {
        FROM api_keys k
        JOIN projects p ON p.id = k.project_id
        WHERE ${where.join(" AND ")}
-       ORDER BY p.slug ASC, k.id DESC`
+       ORDER BY k."order" ASC, p.slug ASC, k.id DESC`
     )
     .all(...params) as Array<{
       id: number;
@@ -339,6 +349,7 @@ export function listApiKeys(filters?: {
       project_slug: string;
       project_name: string;
       name: string;
+      order: number;
       key_prefix: string;
       is_admin: number;
       soft_delete: number;
@@ -353,6 +364,7 @@ export function listApiKeys(filters?: {
     projectSlug: row.project_slug,
     projectName: row.project_name,
     name: row.name,
+    order: row.order,
     keyPrefix: row.key_prefix,
     isAdmin: Boolean(row.is_admin),
     revoked: Boolean(row.soft_delete),

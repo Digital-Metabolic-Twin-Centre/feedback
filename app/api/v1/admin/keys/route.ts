@@ -7,6 +7,7 @@ const keyRequestSchema = z.object({
   projectSlug: z.string().optional(),
   projectName: z.string().optional(),
   keyName: z.string().optional(),
+  order: z.number().int().min(0).optional(),
   isAdmin: z.boolean().optional(),
 });
 
@@ -56,6 +57,7 @@ export async function POST(req: NextRequest) {
       projectSlug: parsed.data.projectSlug,
       projectName: parsed.data.projectName,
       keyName: parsed.data.keyName,
+      order: parsed.data.order,
       isAdmin: parsed.data.isAdmin,
     });
 
