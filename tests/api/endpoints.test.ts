@@ -594,6 +594,15 @@ describe("Headless API endpoints", () => {
     );
     expect(duplicateStatusNameRes.status).toBe(409);
 
+    const duplicateApiKeyNameRes = await keysRoute.POST(
+      req("http://localhost/api/v1/admin/keys", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ projectSlug: "default", keyName: "admin", isAdmin: false }),
+      })
+    );
+    expect(duplicateApiKeyNameRes.status).toBe(409);
+
     const createOrganisationRes = await adminMetaRoute.POST(
       req("http://localhost/api/v1/admin/meta/organisations", {
         method: "POST",
@@ -615,5 +624,15 @@ describe("Headless API endpoints", () => {
       { params: Promise.resolve({ resource: "organisations", id: String(createdOrganisation.id) }) }
     );
     expect(duplicateOrganisationNameRes.status).toBe(409);
+
+    const duplicateApiKeyMetaNameRes = await adminMetaByIdRoute.PATCH(
+      req("http://localhost/api/v1/admin/meta/api_keys/2", {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ name: "user" }),
+      }),
+      { params: Promise.resolve({ resource: "api_keys", id: "2" }) }
+    );
+    expect(duplicateApiKeyMetaNameRes.status).toBe(409);
   });
 });
