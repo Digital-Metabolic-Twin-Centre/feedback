@@ -1,6 +1,6 @@
 # Contributing
 
-This repository is a Next.js-based headless feedback API backed by SQLite. This guide captures the conventions contributors should follow so changes stay compatible with existing deployments.
+This repository is a Next.js-based headless feedback API backed by SQLite. This guide documents the conventions contributors should follow to keep changes compatible with existing deployments.
 
 ## Project Basics
 
@@ -29,7 +29,7 @@ npm test
 npm run build
 ```
 
-If the Next.js build cache gets stale:
+If local Next.js build artifacts become inconsistent:
 
 ```bash
 pkill -f "next dev" || true
@@ -57,26 +57,28 @@ When changing CI:
 - keep tag-based image publishing in `release.yml`
 - do not reintroduce duplicate lint/build workflows
 
-## Docker Release Notes
+## Docker Images
 
 Tagged releases publish multi-architecture images for:
 
 - `linux/amd64`
 - `linux/arm64`
 
-Images are published to:
+Container images are published to:
 
-```bash
-ghcr.io/digital-metabolic-twin-centre/feedback
-```
+`ghcr.io/digital-metabolic-twin-centre/feedback`
 
 The Docker build uses Debian-based Node images rather than Alpine to reduce native-module issues during multi-arch builds.
 
+```bash
+docker pull ghcr.io/digital-metabolic-twin-centre/feedback:latest
+```
+
 ## Database Schema Changes
 
-This project is not using a formal migration framework. Schema evolution currently happens inside [lib/db-sqlite.ts](/home/sbgchidi/Documents/codebase/feedbacks/lib/db-sqlite.ts:1).
+This project is not using a formal migration framework. Schema evolution currently happens inside [lib/db-sqlite.ts](./lib/db-sqlite.ts).
 
-That means contributors must treat schema changes carefully.
+Contributors should treat schema changes carefully to avoid breaking existing deployments.
 
 ### Safe pattern
 
@@ -165,30 +167,13 @@ When changing API routes:
 
 - update the relevant route handler under `app/api/...`
 - update shared helpers if the behavior belongs in `lib/`
-- update [lib/openapi-feedback.ts](/home/sbgchidi/Documents/codebase/feedbacks/lib/openapi-feedback.ts:1) so docs stay accurate
+- update [lib/openapi-feedback.ts](./lib/openapi-feedback.ts) so docs stay accurate
 - keep tags/grouping coherent for Swagger/OpenAPI
-- add or update endpoint coverage in [tests/api/endpoints.test.ts](/home/sbgchidi/Documents/codebase/feedbacks/tests/api/endpoints.test.ts:1)
-
-## HTTP Request Collections
-
-Request files live under [`http/`](/home/sbgchidi/Documents/codebase/feedbacks/http:1) and are grouped by API area:
-
-- `platform/`
-- `bootstrap-admin/`
-- `meta/`
-- `feedback/`
-- `admin-feedback/`
-- `cleanup/`
-
-When you add or change endpoints:
-
-- update the relevant grouped `.http` file
-- keep the existing variable flow intact where possible
-- prefer grouped request files over reintroducing one giant request file
+- add or update endpoint coverage in [tests/api/endpoints.test.ts](./tests/api/endpoints.test.ts)
 
 ## Architecture Diagrams
 
-Structurizr assets live under [`diagrams/`](/home/sbgchidi/Documents/codebase/feedbacks/diagrams:1).
+Structurizr assets live under [`diagrams/`](./diagrams/).
 
 Important files:
 
@@ -241,3 +226,14 @@ Use clear commit messages that describe the type of change, for example:
 - `fix(docker): publish multi-arch images with safer Debian-based build`
 
 If the change affects runtime behavior, packaging, or published artifacts, bump the version before tagging a release.
+
+
+## Pull Request Expectations
+
+Before opening a PR:
+
+- ensure lint, test, and build pass locally
+- keep changes scoped and focused
+- update tests when behavior changes
+- update OpenAPI definitions for API changes
+- update documentation for breaking changes
