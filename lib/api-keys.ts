@@ -132,7 +132,13 @@ export function createApiKeyForProject(input?: {
   const keyPrefix = apiKey.slice(0, 16);
   const keyHash = hashApiKey(apiKey);
   const now = new Date().toISOString();
-  const keyName = input?.keyName?.trim() || "default-key";
+  const keyName =
+    input?.keyName?.trim() ||
+    `${input?.projectName
+      ?.trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "")
+      .replace(/\s+/g, "_")}_${crypto.randomUUID().slice(0, 8)}`;
   const sortOrder = input?.order ?? 0;
 
   assertApiKeyNameIsUnique(keyName);
@@ -250,14 +256,14 @@ export function rotateApiKeyById(keyId: number): {
        LIMIT 1`
     )
     .get(keyId) as {
-    id: number;
-    project_id: number;
-    name: string;
-    order: number;
-    is_admin: number;
-    project_slug: string;
-    project_name: string;
-  } | undefined;
+      id: number;
+      project_id: number;
+      name: string;
+      order: number;
+      is_admin: number;
+      project_slug: string;
+      project_name: string;
+    } | undefined;
 
   if (!existing) {
     return { success: false, error: "API key not found or already revoked." };
