@@ -61,15 +61,15 @@ export function listProjects(includeArchived = false): ProjectSummary[] {
        ORDER BY "order" ASC, slug ASC, id ASC`
     )
     .all() as Array<{
-    id: number;
-    slug: string;
-    name: string;
-    order: number;
-    draft: number;
-    soft_delete: number;
-    created_at: string;
-    updated_at: string;
-  }>;
+      id: number;
+      slug: string;
+      name: string;
+      order: number;
+      draft: number;
+      soft_delete: number;
+      created_at: string;
+      updated_at: string;
+    }>;
 
   return rows.map((row) => ({
     id: row.id,
@@ -83,9 +83,9 @@ export function listProjects(includeArchived = false): ProjectSummary[] {
   }));
 }
 
-export function createProject(input: { slug: string; name: string; order?: number }): ProjectSummary {
-  const slug = normalizeSlug(input.slug);
+export function createProject(input: { slug?: string; name: string; order?: number }): ProjectSummary {
   const name = input.name.trim();
+  const slug = normalizeSlug(name.trim())
   if (!slug) {
     throw new Error("Project slug cannot be empty.");
   }
@@ -109,15 +109,15 @@ export function createProject(input: { slug: string; name: string; order?: numbe
        RETURNING id, slug, name, "order", draft, soft_delete, created_at, updated_at`
     )
     .get(slug, name, sortOrder, now, now) as {
-    id: number;
-    slug: string;
-    name: string;
-    order: number;
-    draft: number;
-    soft_delete: number;
-    created_at: string;
-    updated_at: string;
-  };
+      id: number;
+      slug: string;
+      name: string;
+      order: number;
+      draft: number;
+      soft_delete: number;
+      created_at: string;
+      updated_at: string;
+    };
 
   return {
     id: row.id,

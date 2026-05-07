@@ -209,11 +209,12 @@ describe("Headless API endpoints", () => {
           "content-type": "application/json",
           "x-bootstrap-token": process.env.FEEDBACK_BOOTSTRAP_TOKEN as string,
         },
-        body: JSON.stringify({ slug: "project-b", name: "Project B", order: 20 }),
+        body: JSON.stringify({ slug: "should-be-ignored", name: "Project B", order: 20 }),
       })
     );
     expect(createProjectRes.status).toBe(201);
     const createProjectJson = await readJson(createProjectRes);
+    expect((createProjectJson.data as { slug: string }).slug).toBe("project-b");
     expect((createProjectJson.data as { order: number }).order).toBe(20);
 
     const projectsRes = await projectsRoute.GET(
@@ -300,7 +301,7 @@ describe("Headless API endpoints", () => {
       req("http://localhost/api/v1/admin/meta/projects", {
         method: "POST",
         headers: { ...headers, "content-type": "application/json" },
-        body: JSON.stringify({ slug: "meta-project", name: "Meta Project", order: 40 }),
+        body: JSON.stringify({ name: "Meta Project", order: 40 }),
       }),
       { params: Promise.resolve({ resource: "projects" }) }
     );
@@ -615,7 +616,7 @@ describe("Headless API endpoints", () => {
       req("http://localhost/api/v1/admin/projects", {
         method: "POST",
         headers: bootstrapHeaders,
-        body: JSON.stringify({ slug: "sort-low", name: "Sort Low", order: 1 }),
+        body: JSON.stringify({ slug: "ignored-low", name: "Sort Low", order: 1 }),
       })
     );
     expect(lowProjectRes.status).toBe(201);
@@ -624,7 +625,7 @@ describe("Headless API endpoints", () => {
       req("http://localhost/api/v1/admin/projects", {
         method: "POST",
         headers: bootstrapHeaders,
-        body: JSON.stringify({ slug: "sort-high", name: "Sort High", order: 99 }),
+        body: JSON.stringify({ slug: "ignored-high", name: "Sort High", order: 99 }),
       })
     );
     expect(highProjectRes.status).toBe(201);
@@ -755,29 +756,33 @@ describe("Headless API endpoints", () => {
       "x-bootstrap-token": process.env.FEEDBACK_BOOTSTRAP_TOKEN as string,
     };
 
-    const duplicateSlugRes = await projectsRoute.POST(
+    const ignoredSlugRes = await projectsRoute.POST(
       req("http://localhost/api/v1/admin/projects", {
         method: "POST",
         headers,
-        body: JSON.stringify({ slug: "default", name: "Another Project Name" }),
+        body: JSON.stringify({ slug: "manually-supplied-slug", name: "Slug From Name Project" }),
       })
     );
-    expect(duplicateSlugRes.status).toBe(409);
+    expect(ignoredSlugRes.status).toBe(201);
+    const ignoredSlugJson = await readJson(ignoredSlugRes);
+    expect((ignoredSlugJson.data as { slug: string }).slug).toBe("slug-from-name-project");
 
     const createUniqueProjectRes = await projectsRoute.POST(
       req("http://localhost/api/v1/admin/projects", {
         method: "POST",
         headers,
-        body: JSON.stringify({ slug: "unique-project", name: "Uniqueness Project" }),
+        body: JSON.stringify({ slug: "ignored-unique-project", name: "Uniqueness Project" }),
       })
     );
     expect(createUniqueProjectRes.status).toBe(201);
+    const createUniqueProjectJson = await readJson(createUniqueProjectRes);
+    expect((createUniqueProjectJson.data as { slug: string }).slug).toBe("uniqueness-project");
 
     const duplicateNameRes = await projectsRoute.POST(
       req("http://localhost/api/v1/admin/projects", {
         method: "POST",
         headers,
-        body: JSON.stringify({ slug: "another-unique-project", name: "Uniqueness Project" }),
+        body: JSON.stringify({ slug: "another-ignored-slug", name: "Uniqueness Project" }),
       })
     );
     expect(duplicateNameRes.status).toBe(409);

@@ -4,7 +4,7 @@ import { createProject, listProjects } from "@/lib/projects";
 import { authorizeBootstrap, v1Json, v1PreflightResponse } from "@/lib/api-v1";
 
 const createProjectSchema = z.object({
-  slug: z.string().min(1),
+  slug: z.string().min(1).optional(),
   name: z.string().min(1),
   order: z.number().int().min(0).optional(),
 });

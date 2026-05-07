@@ -504,7 +504,7 @@ export function createMetaResource(resource: MetaResource, payload: unknown) {
       return createReferenceRow(resource, payload);
     case "projects": {
       const parsed = projectPayloadSchema.safeParse(payload);
-      if (!parsed.success || !parsed.data.slug || !parsed.data.name) {
+      if (!parsed.success || !parsed.data.name) {
         throw new Error("Invalid request payload.");
       }
       return createProject({ slug: parsed.data.slug, name: parsed.data.name, order: parsed.data.order });
