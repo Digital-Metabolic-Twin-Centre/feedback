@@ -550,4 +550,70 @@ describe("Headless API endpoints", () => {
     expect(createdKeyData.projectName).toBe("Alpha Project");
     expect(createdKeyData.isAdmin).toBe(true);
   });
+
+  test("bootstrap meta and project uniqueness rules are enforced", async () => {
+    const headers = {
+      "content-type": "application/json",
+      "x-bootstrap-token": process.env.FEEDBACK_BOOTSTRAP_TOKEN as string,
+    };
+
+    const duplicateSlugRes = await projectsRoute.POST(
+      req("http://localhost/api/v1/admin/projects", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ slug: "default", name: "Another Project Name" }),
+      })
+    );
+    expect(duplicateSlugRes.status).toBe(409);
+
+    const createUniqueProjectRes = await projectsRoute.POST(
+      req("http://localhost/api/v1/admin/projects", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ slug: "unique-project", name: "Uniqueness Project" }),
+      })
+    );
+    expect(createUniqueProjectRes.status).toBe(201);
+
+    const duplicateNameRes = await projectsRoute.POST(
+      req("http://localhost/api/v1/admin/projects", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ slug: "another-unique-project", name: "Uniqueness Project" }),
+      })
+    );
+    expect(duplicateNameRes.status).toBe(409);
+
+    const duplicateStatusNameRes = await adminMetaRoute.POST(
+      req("http://localhost/api/v1/admin/meta/feedback_status", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ name: "Open", label: "Open Copy" }),
+      }),
+      { params: Promise.resolve({ resource: "feedback_status" }) }
+    );
+    expect(duplicateStatusNameRes.status).toBe(409);
+
+    const createOrganisationRes = await adminMetaRoute.POST(
+      req("http://localhost/api/v1/admin/meta/organisations", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ name: "Unique Org", label: "Unique Org" }),
+      }),
+      { params: Promise.resolve({ resource: "organisations" }) }
+    );
+    expect(createOrganisationRes.status).toBe(201);
+    const createOrganisationJson = await readJson(createOrganisationRes);
+    const createdOrganisation = createOrganisationJson.data as { id: number };
+
+    const duplicateOrganisationNameRes = await adminMetaByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/meta/organisations/${createdOrganisation.id}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ name: "General" }),
+      }),
+      { params: Promise.resolve({ resource: "organisations", id: String(createdOrganisation.id) }) }
+    );
+    expect(duplicateOrganisationNameRes.status).toBe(409);
+  });
 });

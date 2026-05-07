@@ -19,6 +19,38 @@ function normalizeSlug(value: string): string {
     .replace(/^-|-$/g, "");
 }
 
+function normalizeName(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function projectExistsBySlug(slug: string, excludeId?: number): boolean {
+  const row = db
+    .prepare(
+      `SELECT id
+       FROM projects
+       WHERE LOWER(TRIM(slug)) = ?
+         ${excludeId ? "AND id != ?" : ""}
+       LIMIT 1`
+    )
+    .get(...(excludeId ? [slug, excludeId] : [slug])) as { id: number } | undefined;
+
+  return Boolean(row);
+}
+
+function projectExistsByName(name: string, excludeId?: number): boolean {
+  const row = db
+    .prepare(
+      `SELECT id
+       FROM projects
+       WHERE LOWER(TRIM(name)) = ?
+         ${excludeId ? "AND id != ?" : ""}
+       LIMIT 1`
+    )
+    .get(...(excludeId ? [name, excludeId] : [name])) as { id: number } | undefined;
+
+  return Boolean(row);
+}
+
 export function listProjects(includeArchived = false): ProjectSummary[] {
   const rows = db
     .prepare(
@@ -50,17 +82,20 @@ export function listProjects(includeArchived = false): ProjectSummary[] {
 
 export function createProject(input: { slug: string; name: string }): ProjectSummary {
   const slug = normalizeSlug(input.slug);
+  const name = input.name.trim();
   if (!slug) {
     throw new Error("Project slug cannot be empty.");
   }
+  if (!name) {
+    throw new Error("Project name cannot be empty.");
+  }
 
   const now = new Date().toISOString();
-  const existing = db
-    .prepare(`SELECT id FROM projects WHERE slug = ? LIMIT 1`)
-    .get(slug) as { id: number } | undefined;
-
-  if (existing) {
+  if (projectExistsBySlug(slug)) {
     throw new Error("Project slug already exists.");
+  }
+  if (projectExistsByName(normalizeName(name))) {
+    throw new Error("Project name already exists.");
   }
 
   const row = db
@@ -69,7 +104,7 @@ export function createProject(input: { slug: string; name: string }): ProjectSum
        VALUES (?, ?, ?, ?)
        RETURNING id, slug, name, draft, soft_delete, created_at, updated_at`
     )
-    .get(slug, input.name.trim(), now, now) as {
+    .get(slug, name, now, now) as {
     id: number;
     slug: string;
     name: string;
@@ -88,4 +123,30 @@ export function createProject(input: { slug: string; name: string }): ProjectSum
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+export function assertProjectUniqueness(input: {
+  slug?: string;
+  name?: string;
+  excludeId?: number;
+}) {
+  if (input.slug !== undefined) {
+    const slug = normalizeSlug(input.slug);
+    if (!slug) {
+      throw new Error("Project slug cannot be empty.");
+    }
+    if (projectExistsBySlug(slug, input.excludeId)) {
+      throw new Error("Project slug already exists.");
+    }
+  }
+
+  if (input.name !== undefined) {
+    const name = input.name.trim();
+    if (!name) {
+      throw new Error("Project name cannot be empty.");
+    }
+    if (projectExistsByName(normalizeName(name), input.excludeId)) {
+      throw new Error("Project name already exists.");
+    }
+  }
 }

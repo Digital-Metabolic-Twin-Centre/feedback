@@ -77,7 +77,7 @@ export async function PATCH(
       || lowered.includes("at least one updatable field")
       || lowered.includes("cannot be empty")
       ? 400
-      : lowered.includes("unique")
+      : lowered.includes("unique") || lowered.includes("already exists")
         ? 409
         : 500;
     return v1Json({ success: false, error: message }, { status });

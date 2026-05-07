@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createApiKeyForProject, listApiKeys, revokeApiKeyById, type ApiKeySummary } from "@/lib/api-keys";
 import { feedbackDb as db } from "@/lib/db-sqlite";
-import { createProject, listProjects, type ProjectSummary } from "@/lib/projects";
+import { assertProjectUniqueness, createProject, listProjects, type ProjectSummary } from "@/lib/projects";
 
 export const metaResourceSchema = z.enum([
   "feedback_status",
@@ -70,6 +70,36 @@ const referenceConfigs = {
   feedback_types: { table: "feedback_types", orderBy: "id ASC", hasCountry: false },
   organisations: { table: "organisations", orderBy: "name ASC", hasCountry: true },
 } as const satisfies Record<string, { table: string; orderBy: string; hasCountry: boolean }>;
+
+function normalizedNameExists(
+  resource: keyof typeof referenceConfigs,
+  name: string,
+  excludeId?: number
+): boolean {
+  const row = db
+    .prepare(
+      `SELECT id
+       FROM ${referenceConfigs[resource].table}
+       WHERE LOWER(TRIM(name)) = ?
+         ${excludeId ? "AND id != ?" : ""}
+       LIMIT 1`
+    )
+    .get(...(excludeId ? [name.trim().toLowerCase(), excludeId] : [name.trim().toLowerCase()])) as
+    | { id: number }
+    | undefined;
+
+  return Boolean(row);
+}
+
+function assertReferenceNameIsUnique(
+  resource: keyof typeof referenceConfigs,
+  name: string,
+  excludeId?: number
+) {
+  if (normalizedNameExists(resource, name, excludeId)) {
+    throw new Error("Name already exists.");
+  }
+}
 
 function normalizeProjectRow(row: {
   id: number;
@@ -142,6 +172,7 @@ function createReferenceRow(resource: keyof typeof referenceConfigs, payload: un
   const config = referenceConfigs[resource];
   const now = new Date().toISOString();
   const name = parsed.data.name.trim();
+  assertReferenceNameIsUnique(resource, name);
   const label = parsed.data.label?.trim() || null;
   const country = config.hasCountry ? parsed.data.country?.trim() || null : null;
   const createdBy = parsed.data.createdBy?.trim() || null;
@@ -187,6 +218,7 @@ function updateReferenceRow(resource: keyof typeof referenceConfigs, id: number,
   if (parsed.data.name !== undefined) {
     const name = parsed.data.name.trim();
     if (!name) throw new Error("Name cannot be empty.");
+    assertReferenceNameIsUnique(resource, name, id);
     updates.push("name = ?");
     params.push(name);
   }
@@ -272,12 +304,14 @@ function updateProjectById(id: number, payload: unknown): ProjectSummary | null 
   if (parsed.data.slug !== undefined) {
     const slug = parsed.data.slug.trim().toLowerCase();
     if (!slug) throw new Error("Project slug cannot be empty.");
+    assertProjectUniqueness({ slug, excludeId: id });
     updates.push("slug = ?");
     params.push(slug);
   }
   if (parsed.data.name !== undefined) {
     const name = parsed.data.name.trim();
     if (!name) throw new Error("Project name cannot be empty.");
+    assertProjectUniqueness({ name, excludeId: id });
     updates.push("name = ?");
     params.push(name);
   }

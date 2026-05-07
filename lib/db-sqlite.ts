@@ -141,6 +141,23 @@ function applySchema(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_notification_audit_created_at ON notification_audit(created_at);
   `);
 
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_slug_unique_normalized
+    ON projects(LOWER(TRIM(slug)));
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_name_unique_normalized
+    ON projects(LOWER(TRIM(name)));
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_feedback_types_name_unique_normalized
+    ON feedback_types(LOWER(TRIM(name)));
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_feedback_status_name_unique_normalized
+    ON feedback_status(LOWER(TRIM(name)));
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_organisations_name_unique_normalized
+    ON organisations(LOWER(TRIM(name)));
+  `);
+
   const feedbackColumns = db
     .prepare(`PRAGMA table_info(feedback)`)
     .all() as Array<{ name: string }>;
