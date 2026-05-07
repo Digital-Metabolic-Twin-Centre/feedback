@@ -9,7 +9,7 @@ import { feedbackDb as db } from "@/lib/db-sqlite";
 import { deriveSubmitterRef } from "@/lib/feedback/submitter-ref";
 import type { FeedbackData, FeedbackThreadMessage } from "@/lib/feedback/types";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+//  Types 
 
 export type RefRow = { id: number; name: string; label: string | null; order: number };
 
@@ -32,7 +32,7 @@ export type UpdateFeedbackInput = {
   updates: Record<string, unknown>;
 };
 
-// ── Reference tables ──────────────────────────────────────────────────────────
+//  Reference tables 
 
 export function getFeedbackTypes(): RefRow[] {
   return db
@@ -71,7 +71,7 @@ export function getOrganisations(filters: Record<string, string> = {}): RefRow[]
   return db.prepare(sql).all() as RefRow[];
 }
 
-// ── feedback ─────────────────────────────────────────────────────────────────
+//  feedback 
 
 export function selectfeedback(
   filters: Record<string, string> = {},
@@ -351,7 +351,7 @@ export function updateFeedback(
   return { rowCount: result.changes };
 }
 
-// ── Thread messages ────────────────────────────────────────────────────────────
+//  Thread messages 
 
 export function getFeedbackOwner(
   feedbackId: number,
@@ -417,7 +417,7 @@ export function insertThreadMessage(input: {
   })();
 }
 
-// ── GitLab sync helpers ───────────────────────────────────────────────────────
+//  GitLab sync helpers 
 
 export type FeedbackForGitLab = {
   id: number;
@@ -428,7 +428,7 @@ export type FeedbackForGitLab = {
   feedback_status_name: string | null;
   promote: boolean;
   draft: boolean;
-  gitlab_issue_iid: number | null;
+  gitlab_issue_id: number | null;
   gitlab_issue_url: string | null;
   promoted_at: string | null;
   created_by: string | null;
@@ -460,7 +460,7 @@ export function loadFeedbackForGitLab(feedbackId: number): {
          fs.name  AS feedback_status_name,
          f.promote,
          f.draft,
-         f.gitlab_issue_iid,
+         f.gitlab_issue_id,
          f.gitlab_issue_url,
          f.promoted_at,
          f.created_by,
@@ -502,14 +502,14 @@ export function persistGitLabIssueLink(
 ): void {
   db.prepare(
     `UPDATE feedback
-     SET gitlab_issue_iid = ?,
+     SET gitlab_issue_id = ?,
          gitlab_issue_url = COALESCE(?, gitlab_issue_url),
          promoted_at = COALESCE(promoted_at, ?)
      WHERE id = ?`
   ).run(iid, url, new Date().toISOString(), feedbackId);
 }
 
-// ── Notification audit ────────────────────────────────────────────────────────
+//  Notification audit 
 
 export function recordNotificationAudit(sessionId: string, recipients: string[]): void {
   if (recipients.length === 0) return;

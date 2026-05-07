@@ -37,9 +37,7 @@ const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
 
-// ─────────────────────────────────────────────
 // Drop all tables (--fresh only)
-// ─────────────────────────────────────────────
 if (FRESH) {
   console.log("Dropping existing tables...");
   db.exec(`
@@ -54,13 +52,11 @@ if (FRESH) {
   `);
 }
 
-// ─────────────────────────────────────────────
 // Create tables
-// ─────────────────────────────────────────────
 console.log("Applying schema...");
 
 db.exec(`
-  -- ── Projects ─────────────────────────────────────────────────────────────────
+  --  Projects 
   CREATE TABLE IF NOT EXISTS projects (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     slug        TEXT    NOT NULL UNIQUE,
@@ -71,7 +67,7 @@ db.exec(`
     updated_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
   );
 
-  -- ── Organisations ────────────────────────────────────────────────────────────
+  --  Organisations 
   CREATE TABLE IF NOT EXISTS organisations (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     name        TEXT    NOT NULL,
@@ -85,7 +81,7 @@ db.exec(`
     updated_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
   );
 
-  -- ── Feedback types ───────────────────────────────────────────────────────────
+  --  Feedback types 
   CREATE TABLE IF NOT EXISTS feedback_types (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     name        TEXT    NOT NULL UNIQUE,
@@ -98,7 +94,7 @@ db.exec(`
     updated_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
   );
 
-  -- ── Feedback status ──────────────────────────────────────────────────────────
+  --  Feedback status 
   CREATE TABLE IF NOT EXISTS feedback_status (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     name        TEXT    NOT NULL UNIQUE,
@@ -111,7 +107,7 @@ db.exec(`
     updated_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
   );
 
-  -- ── feedback ────────────────────────────────────────────────────────────────
+  --  feedback 
   CREATE TABLE IF NOT EXISTS feedback (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id       INTEGER REFERENCES projects(id),
@@ -124,7 +120,7 @@ db.exec(`
     promote          INTEGER NOT NULL DEFAULT 0,
     draft            INTEGER NOT NULL DEFAULT 0,
     soft_delete      INTEGER NOT NULL DEFAULT 0,
-    gitlab_issue_iid INTEGER,
+    gitlab_issue_id INTEGER,
     gitlab_issue_url TEXT,
     promoted_at      TEXT,
     created_by       TEXT    NOT NULL DEFAULT 'anonymous',
@@ -137,7 +133,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_feedback_created_at  ON feedback(created_at);
   CREATE INDEX IF NOT EXISTS idx_feedback_soft_delete ON feedback(soft_delete);
 
-  -- ── API keys ─────────────────────────────────────────────────────────────────
+  --  API keys 
   CREATE TABLE IF NOT EXISTS api_keys (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id   INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -155,7 +151,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_api_keys_project_id ON api_keys(project_id);
   CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);
 
-  -- ── Feedback messages ────────────────────────────────────────────────────────
+  --  Feedback messages 
   CREATE TABLE IF NOT EXISTS feedback_messages (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     feedback_id INTEGER NOT NULL REFERENCES feedback(id) ON DELETE CASCADE,
@@ -171,7 +167,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_feedback_messages_feedback_id ON feedback_messages(feedback_id);
   CREATE INDEX IF NOT EXISTS idx_feedback_messages_created_at  ON feedback_messages(created_at);
 
-  -- ── Notification audit ───────────────────────────────────────────────────────
+  --  Notification audit 
   CREATE TABLE IF NOT EXISTS notification_audit (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id TEXT    NOT NULL,
@@ -205,9 +201,7 @@ const defaultProject = db
 db.prepare(`UPDATE feedback SET project_id = ? WHERE project_id IS NULL`).run(defaultProject.id);
 console.log("Ensured default project.");
 
-// ─────────────────────────────────────────────
 // Seed reference data
-// ─────────────────────────────────────────────
 if (SEED) {
   console.log("\n Seeding reference data...");
 

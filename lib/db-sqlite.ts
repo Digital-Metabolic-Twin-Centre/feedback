@@ -90,7 +90,7 @@ function applySchema(db: Database.Database) {
       promote         INTEGER NOT NULL DEFAULT 0,
       draft           INTEGER NOT NULL DEFAULT 0,
       soft_delete     INTEGER NOT NULL DEFAULT 0,
-      gitlab_issue_iid INTEGER,
+      gitlab_issue_id INTEGER,
       gitlab_issue_url TEXT,
       promoted_at      TEXT,
       created_by      TEXT    NOT NULL DEFAULT 'anonymous',

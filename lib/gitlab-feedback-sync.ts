@@ -226,9 +226,9 @@ export async function syncPromotedFeedbackToGitLab(feedbackId: number) {
 
   let issue: GitLabIssue | null = null;
 
-  if (feedback.gitlab_issue_iid) {
+  if (feedback.gitlab_issue_id) {
     try {
-      issue = await findIssueByIid(feedback.gitlab_issue_iid);
+      issue = await findIssueByIid(feedback.gitlab_issue_id);
     } catch {
       issue = null;
     }
