@@ -488,6 +488,196 @@ describe("Headless API endpoints", () => {
     expect(patchRes.status).toBe(200);
   });
 
+  test("auth and validation guards reject invalid access patterns", async () => {
+    const invalidKeyRes = await feedbackRoute.POST(
+      req("http://localhost/api/v1/feedback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": "fbk_invalid",
+        },
+        body: JSON.stringify({ email: "user@example.com" }),
+      })
+    );
+    expect(invalidKeyRes.status).toBe(401);
+
+    const nonAdminListRes = await adminfeedbackRoute.GET(
+      req("http://localhost/api/v1/admin/feedback", {
+        headers: { "x-api-key": userApiKey },
+      })
+    );
+    expect(nonAdminListRes.status).toBe(403);
+
+    const invalidBootstrapMetaResourceRes = await adminMetaRoute.GET(
+      req("http://localhost/api/v1/admin/meta/unknown", {
+        headers: { "x-bootstrap-token": process.env.FEEDBACK_BOOTSTRAP_TOKEN as string },
+      }),
+      { params: Promise.resolve({ resource: "unknown" }) }
+    );
+    expect(invalidBootstrapMetaResourceRes.status).toBe(404);
+
+    const invalidMetaIdRes = await adminMetaByIdRoute.GET(
+      req("http://localhost/api/v1/admin/meta/projects/not-a-number", {
+        headers: { "x-bootstrap-token": process.env.FEEDBACK_BOOTSTRAP_TOKEN as string },
+      }),
+      { params: Promise.resolve({ resource: "projects", id: "not-a-number" }) }
+    );
+    expect(invalidMetaIdRes.status).toBe(400);
+
+    const invalidFeedbackIdRes = await feedbackByIdRoute.GET(
+      req("http://localhost/api/v1/feedback/not-a-number", {
+        headers: { "x-api-key": userApiKey },
+      }),
+      { params: Promise.resolve({ id: "not-a-number" }) }
+    );
+    expect(invalidFeedbackIdRes.status).toBe(400);
+  });
+
+  test("closed feedback blocks new replies and detail route toggles includeMessages", async () => {
+    const createRes = await feedbackRoute.POST(
+      req("http://localhost/api/v1/feedback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": userApiKey,
+        },
+        body: JSON.stringify({
+          email: "closed@example.com",
+          organisation: 1,
+          feedback_type: 1,
+          feedback_status: 1,
+          page: "/closed",
+          initial_message: "Please close this.",
+        }),
+      })
+    );
+    expect(createRes.status).toBe(201);
+    const created = await readJson(createRes);
+    const feedbackId = created.id as number;
+
+    const detailWithoutMessagesRes = await feedbackByIdRoute.GET(
+      req(`http://localhost/api/v1/feedback/${feedbackId}`, {
+        headers: { "x-api-key": userApiKey },
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(detailWithoutMessagesRes.status).toBe(200);
+    const detailWithoutMessagesJson = await readJson(detailWithoutMessagesRes);
+    expect((detailWithoutMessagesJson.data as Record<string, unknown>).messages).toBeUndefined();
+
+    const closeRes = await adminFeedbackByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": adminApiKey,
+        },
+        body: JSON.stringify({ action: "close" }),
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(closeRes.status).toBe(200);
+
+    const userReplyRes = await feedbackByIdRoute.POST(
+      req(`http://localhost/api/v1/feedback/${feedbackId}`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": userApiKey,
+        },
+        body: JSON.stringify({ message: "Can I still reply?" }),
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(userReplyRes.status).toBe(409);
+
+    const adminReplyRes = await adminMessagesRoute.POST(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}/messages`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": adminApiKey,
+        },
+        body: JSON.stringify({ message: "Admin should also be blocked." }),
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(adminReplyRes.status).toBe(409);
+  });
+
+  test("order fields control sorting for projects and feedback metadata", async () => {
+    const bootstrapHeaders = {
+      "content-type": "application/json",
+      "x-bootstrap-token": process.env.FEEDBACK_BOOTSTRAP_TOKEN as string,
+    };
+
+    const lowProjectRes = await projectsRoute.POST(
+      req("http://localhost/api/v1/admin/projects", {
+        method: "POST",
+        headers: bootstrapHeaders,
+        body: JSON.stringify({ slug: "sort-low", name: "Sort Low", order: 1 }),
+      })
+    );
+    expect(lowProjectRes.status).toBe(201);
+
+    const highProjectRes = await projectsRoute.POST(
+      req("http://localhost/api/v1/admin/projects", {
+        method: "POST",
+        headers: bootstrapHeaders,
+        body: JSON.stringify({ slug: "sort-high", name: "Sort High", order: 99 }),
+      })
+    );
+    expect(highProjectRes.status).toBe(201);
+
+    const projectsRes = await projectsRoute.GET(
+      req("http://localhost/api/v1/admin/projects?includeArchived=true", {
+        headers: { "x-bootstrap-token": process.env.FEEDBACK_BOOTSTRAP_TOKEN as string },
+      })
+    );
+    expect(projectsRes.status).toBe(200);
+    const projectsJson = await readJson(projectsRes);
+    const projectData = projectsJson.data as Array<{ slug: string; order: number }>;
+    const sortLowIndex = projectData.findIndex((row) => row.slug === "sort-low");
+    const sortHighIndex = projectData.findIndex((row) => row.slug === "sort-high");
+    expect(sortLowIndex).toBeGreaterThanOrEqual(0);
+    expect(sortHighIndex).toBeGreaterThanOrEqual(0);
+    expect(sortLowIndex).toBeLessThan(sortHighIndex);
+
+    const lowStatusRes = await adminMetaRoute.POST(
+      req("http://localhost/api/v1/admin/meta/feedback_status", {
+        method: "POST",
+        headers: bootstrapHeaders,
+        body: JSON.stringify({ name: "Sort First", label: "Sort First", order: 1 }),
+      }),
+      { params: Promise.resolve({ resource: "feedback_status" }) }
+    );
+    expect(lowStatusRes.status).toBe(201);
+
+    const highStatusRes = await adminMetaRoute.POST(
+      req("http://localhost/api/v1/admin/meta/feedback_status", {
+        method: "POST",
+        headers: bootstrapHeaders,
+        body: JSON.stringify({ name: "Sort Last", label: "Sort Last", order: 99 }),
+      }),
+      { params: Promise.resolve({ resource: "feedback_status" }) }
+    );
+    expect(highStatusRes.status).toBe(201);
+
+    const feedbackMetaRes = await feedbackMetaRoute.GET(
+      req("http://localhost/api/v1/feedback/meta", {
+        headers: { "x-api-key": userApiKey },
+      })
+    );
+    expect(feedbackMetaRes.status).toBe(200);
+    const feedbackMetaJson = await readJson(feedbackMetaRes);
+    const statuses = (feedbackMetaJson as { statuses: Array<{ name: string; order: number }> }).statuses;
+    const firstIndex = statuses.findIndex((row) => row.name === "Sort First");
+    const lastIndex = statuses.findIndex((row) => row.name === "Sort Last");
+    expect(firstIndex).toBeGreaterThanOrEqual(0);
+    expect(lastIndex).toBeGreaterThanOrEqual(0);
+    expect(firstIndex).toBeLessThan(lastIndex);
+  });
+
   test("key rotate and revoke", async () => {
     const keyCreateRes = await keysRoute.POST(
       req("http://localhost/api/v1/admin/keys", {
