@@ -30,6 +30,7 @@ function applySchema(db: Database.Database) {
       id        INTEGER PRIMARY KEY AUTOINCREMENT,
       slug      TEXT NOT NULL UNIQUE,
       name      TEXT NOT NULL,
+      "order"   INTEGER NOT NULL DEFAULT 0,
       draft     INTEGER NOT NULL DEFAULT 0,
       soft_delete INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
@@ -41,6 +42,7 @@ function applySchema(db: Database.Database) {
       name      TEXT NOT NULL,
       label     TEXT,
       country   TEXT,
+      "order"   INTEGER NOT NULL DEFAULT 0,
       draft     INTEGER NOT NULL DEFAULT 0,
       soft_delete INTEGER NOT NULL DEFAULT 0,
       created_by TEXT,
@@ -53,6 +55,7 @@ function applySchema(db: Database.Database) {
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       name       TEXT NOT NULL UNIQUE,
       label      TEXT,
+      "order"    INTEGER NOT NULL DEFAULT 0,
       draft      INTEGER NOT NULL DEFAULT 0,
       soft_delete INTEGER NOT NULL DEFAULT 0,
       created_by TEXT,
@@ -65,6 +68,7 @@ function applySchema(db: Database.Database) {
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       name       TEXT NOT NULL UNIQUE,
       label      TEXT,
+      "order"    INTEGER NOT NULL DEFAULT 0,
       draft      INTEGER NOT NULL DEFAULT 0,
       soft_delete INTEGER NOT NULL DEFAULT 0,
       created_by TEXT,
@@ -82,6 +86,7 @@ function applySchema(db: Database.Database) {
       page            TEXT,
       feedback_type   INTEGER REFERENCES feedback_types(id),
       feedback_status INTEGER REFERENCES feedback_status(id),
+      "order"         INTEGER NOT NULL DEFAULT 0,
       promote         INTEGER NOT NULL DEFAULT 0,
       draft           INTEGER NOT NULL DEFAULT 0,
       soft_delete     INTEGER NOT NULL DEFAULT 0,
@@ -104,6 +109,7 @@ function applySchema(db: Database.Database) {
       name        TEXT NOT NULL,
       key_prefix  TEXT NOT NULL,
       key_hash    TEXT NOT NULL UNIQUE,
+      "order"     INTEGER NOT NULL DEFAULT 0,
       is_admin    INTEGER NOT NULL DEFAULT 0,
       draft       INTEGER NOT NULL DEFAULT 0,
       soft_delete INTEGER NOT NULL DEFAULT 0,
@@ -120,6 +126,7 @@ function applySchema(db: Database.Database) {
       feedback_id INTEGER NOT NULL REFERENCES feedback(id) ON DELETE CASCADE,
       author_role TEXT NOT NULL CHECK(author_role IN ('User', 'Admin')),
       message     TEXT NOT NULL,
+      "order"     INTEGER NOT NULL DEFAULT 0,
       soft_delete INTEGER NOT NULL DEFAULT 0,
       created_by  TEXT NOT NULL,
       created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
@@ -134,6 +141,7 @@ function applySchema(db: Database.Database) {
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id TEXT    NOT NULL,
       user_email TEXT    NOT NULL,
+      "order"    INTEGER NOT NULL DEFAULT 0,
       created_at TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
     );
 
@@ -156,6 +164,10 @@ function applySchema(db: Database.Database) {
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_organisations_name_unique_normalized
     ON organisations(LOWER(TRIM(name)));
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_api_keys_name_unique_active_normalized
+    ON api_keys(LOWER(TRIM(name)))
+    WHERE soft_delete = 0;
   `);
 
   const feedbackColumns = db
@@ -167,6 +179,15 @@ function applySchema(db: Database.Database) {
     db.exec(`ALTER TABLE feedback ADD COLUMN project_id INTEGER REFERENCES projects(id)`);
   }
   db.exec(`CREATE INDEX IF NOT EXISTS idx_feedback_project_id ON feedback(project_id)`);
+
+  ensureOrderColumn(db, "projects");
+  ensureOrderColumn(db, "organisations");
+  ensureOrderColumn(db, "feedback_types");
+  ensureOrderColumn(db, "feedback_status");
+  ensureOrderColumn(db, "feedback");
+  ensureOrderColumn(db, "api_keys");
+  ensureOrderColumn(db, "feedback_messages");
+  ensureOrderColumn(db, "notification_audit");
 
   const defaultProject = db
     .prepare(`SELECT id FROM projects WHERE slug = ? LIMIT 1`)
@@ -181,4 +202,17 @@ function applySchema(db: Database.Database) {
   }
 
   db.prepare(`UPDATE feedback SET project_id = ? WHERE project_id IS NULL`).run(defaultProjectId);
+}
+
+function ensureOrderColumn(db: Database.Database, tableName: string) {
+  const columns = db
+    .prepare(`PRAGMA table_info(${tableName})`)
+    .all() as Array<{ name: string }>;
+
+  const hasOrder = columns.some((col) => col.name === "order");
+  if (!hasOrder) {
+    db.exec(`ALTER TABLE ${tableName} ADD COLUMN "order" INTEGER NOT NULL DEFAULT 0`);
+  }
+
+  db.exec(`UPDATE ${tableName} SET "order" = id WHERE "order" = 0`);
 }

@@ -26,12 +26,14 @@ export async function GET(req: NextRequest) {
     const keys = listApiKeys({ projectSlug, includeRevoked });
     return v1Json({ success: true, data: keys });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    const status = message.toLowerCase().includes("already exists") ? 409 : 500;
     return v1Json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Internal server error",
+        error: message,
       },
-      { status: 500 }
+      { status }
     );
   }
 }
@@ -65,12 +67,14 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    const status = message.toLowerCase().includes("already exists") ? 409 : 500;
     return v1Json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Internal server error",
+        error: message,
       },
-      { status: 500 }
+      { status }
     );
   }
 }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createApiKeyForProject, listApiKeys, revokeApiKeyById, type ApiKeySummary } from "@/lib/api-keys";
+import { assertApiKeyNameIsUnique, createApiKeyForProject, listApiKeys, revokeApiKeyById, type ApiKeySummary } from "@/lib/api-keys";
 import { feedbackDb as db } from "@/lib/db-sqlite";
 import { assertProjectUniqueness, createProject, listProjects, type ProjectSummary } from "@/lib/projects";
 
@@ -414,6 +414,7 @@ function updateApiKeyById(id: number, payload: unknown): ApiKeyDetail | null {
   if (parsed.data.name !== undefined) {
     const name = parsed.data.name.trim();
     if (!name) throw new Error("API key name cannot be empty.");
+    assertApiKeyNameIsUnique(name, id);
     updates.push("name = ?");
     params.push(name);
   }

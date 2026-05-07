@@ -44,6 +44,38 @@ function normalizeSlug(value: string): string {
     .replace(/^-|-$/g, "") || "default";
 }
 
+function normalizeKeyName(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function activeApiKeyNameExists(name: string, excludeId?: number): boolean {
+  const row = db
+    .prepare(
+      `SELECT id
+       FROM api_keys
+       WHERE LOWER(TRIM(name)) = ?
+         AND soft_delete = 0
+         ${excludeId ? "AND id != ?" : ""}
+       LIMIT 1`
+    )
+    .get(...(excludeId ? [normalizeKeyName(name), excludeId] : [normalizeKeyName(name)])) as
+    | { id: number }
+    | undefined;
+
+  return Boolean(row);
+}
+
+export function assertApiKeyNameIsUnique(name: string, excludeId?: number) {
+  const normalized = name.trim();
+  if (!normalized) {
+    throw new Error("API key name cannot be empty.");
+  }
+
+  if (activeApiKeyNameExists(normalized, excludeId)) {
+    throw new Error("API key name already exists.");
+  }
+}
+
 function getFirstActiveProject(): { id: number; slug: string; name: string } | null {
   const row = db
     .prepare(
@@ -97,6 +129,9 @@ export function createApiKeyForProject(input?: {
   const keyPrefix = apiKey.slice(0, 16);
   const keyHash = hashApiKey(apiKey);
   const now = new Date().toISOString();
+  const keyName = input?.keyName?.trim() || "default-key";
+
+  assertApiKeyNameIsUnique(keyName);
 
   const row = db
     .prepare(
@@ -106,7 +141,7 @@ export function createApiKeyForProject(input?: {
     )
     .get(
       project.id,
-      input?.keyName?.trim() || "default-key",
+      keyName,
       keyPrefix,
       keyHash,
       input?.isAdmin ? 1 : 0,
@@ -226,6 +261,8 @@ export function rotateApiKeyById(keyId: number): {
   const now = new Date().toISOString();
 
   const tx = db.transaction(() => {
+    db.prepare(`UPDATE api_keys SET soft_delete = 1, updated_at = ? WHERE id = ?`).run(now, keyId);
+
     const inserted = db
       .prepare(
         `INSERT INTO api_keys (project_id, name, key_prefix, key_hash, is_admin, created_at, updated_at)
@@ -241,8 +278,6 @@ export function rotateApiKeyById(keyId: number): {
         now,
         now
       ) as { id: number };
-
-    db.prepare(`UPDATE api_keys SET soft_delete = 1, updated_at = ? WHERE id = ?`).run(now, keyId);
     return inserted.id;
   });
 
