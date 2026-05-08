@@ -222,9 +222,11 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
                   properties: {
                     action: {
                       type: "string",
-                      enum: ["status", "close", "wontfix", "promote", "delete", "restore"],
+                      enum: ["type", "status", "close", "wontfix", "promote", "draft", "delete", "restore"],
                     },
-                    value: { type: "integer" },
+                    value: {
+                      oneOf: [{ type: "integer" }, { type: "string" }, { type: "boolean" }],
+                    },
                   },
                 },
               },

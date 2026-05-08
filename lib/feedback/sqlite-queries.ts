@@ -13,6 +13,8 @@ import type { FeedbackData, FeedbackThreadMessage } from "@/lib/feedback/types";
 
 export type RefRow = { id: number; name: string; label: string | null; order: number };
 
+type RefTableName = "feedback_status" | "feedback_types";
+
 export type InsertFeedbackInput = {
   project_id?: number | null;
   email: string;
@@ -53,6 +55,31 @@ export function getfeedbacktatuses(): RefRow[] {
        ORDER BY "order" ASC, id ASC`
     )
     .all() as RefRow[];
+}
+
+function getReferenceIdByNameOrLabel(table: RefTableName, value: string): number | null {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return null;
+
+  const row = db
+    .prepare(
+      `SELECT id
+       FROM ${table}
+       WHERE LOWER(TRIM(name)) = ?
+          OR LOWER(TRIM(COALESCE(label, ''))) = ?
+       LIMIT 1`
+    )
+    .get(normalized, normalized) as { id: number } | undefined;
+
+  return row?.id ?? null;
+}
+
+export function getFeedbackStatusIdByName(value: string): number | null {
+  return getReferenceIdByNameOrLabel("feedback_status", value);
+}
+
+export function getFeedbackTypeIdByName(value: string): number | null {
+  return getReferenceIdByNameOrLabel("feedback_types", value);
 }
 
 export function getOrganisations(filters: Record<string, string> = {}): RefRow[] {

@@ -97,9 +97,10 @@ describe("Headless API endpoints", () => {
     db.exec(`
       INSERT INTO feedback_status (id, name, label) VALUES
       (1,'Open','Open'),(2,'In Progress','In Progress'),(3,'Pending Review','Pending Review'),
-      (4,'Resolved','Resolved'),(5,'Closed','Closed'),(6,'Won''t Fix','Won''t Fix');
+      (4,'Resolved','Resolved'),(15,'Closed','Closed'),(16,'Won''t Fix','Won''t Fix');
 
-      INSERT INTO feedback_types (id, name, label) VALUES (1,'Bug','Bug');
+      INSERT INTO feedback_types (id, name, label) VALUES
+      (1,'Bug','Bug'),(2,'Feature','Feature');
       INSERT INTO organisations (id, name, label) VALUES (1,'General','General');
     `);
 
@@ -167,6 +168,25 @@ describe("Headless API endpoints", () => {
     );
     expect(spec.paths["/api/v1/feedback/meta"].get.tags).toEqual(["Feedback"]);
     expect(spec.paths["/api/v1/admin/feedback"].get.tags).toEqual(["Admin Feedback"]);
+    expect(
+      (
+        spec.paths["/api/v1/admin/feedback/{id}"] as {
+          patch?: {
+            requestBody?: {
+              content?: {
+                "application/json"?: {
+                  schema?: {
+                    properties?: {
+                      action?: { enum?: string[] };
+                    };
+                  };
+                };
+              };
+            };
+          };
+        }
+      ).patch?.requestBody?.content?.["application/json"]?.schema?.properties?.action?.enum
+    ).toEqual(expect.arrayContaining(["type", "status", "promote", "draft"]));
     expect(spec.paths["/api/v1/admin/keys"].get.tags).toEqual(["Bootstrap Admin"]);
     expect(spec.paths["/api/v1/admin/meta/{resource}"].get.tags).toEqual(["Bootstrap Admin"]);
     expect(spec.paths["/api/v1/openapi.json"].get.tags).toEqual(["Documentation"]);
@@ -604,6 +624,211 @@ describe("Headless API endpoints", () => {
       { params: Promise.resolve({ id: String(feedbackId) }) }
     );
     expect(adminReplyRes.status).toBe(409);
+  });
+
+  test("admin feedback patch accepts type, status, promote, and draft actions", async () => {
+    const createRes = await feedbackRoute.POST(
+      req("http://localhost/api/v1/feedback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": userApiKey,
+        },
+        body: JSON.stringify({
+          email: "patchable@example.com",
+          organisation: 1,
+          feedback_type: 1,
+          feedback_status: 1,
+          page: "/patchable",
+          initial_message: "Patch me.",
+        }),
+      })
+    );
+    expect(createRes.status).toBe(201);
+    const created = await readJson(createRes);
+    const feedbackId = created.id as number;
+
+    const typeRes = await adminFeedbackByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": adminApiKey,
+        },
+        body: JSON.stringify({ action: "type", value: "Feature" }),
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(typeRes.status).toBe(200);
+
+    const statusRes = await adminFeedbackByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": adminApiKey,
+        },
+        body: JSON.stringify({ action: "status", value: "In Progress" }),
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(statusRes.status).toBe(200);
+
+    const promoteRes = await adminFeedbackByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": adminApiKey,
+        },
+        body: JSON.stringify({ action: "promote", value: true }),
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(promoteRes.status).toBe(200);
+
+    const draftRes = await adminFeedbackByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": adminApiKey,
+        },
+        body: JSON.stringify({ action: "draft", value: true }),
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(draftRes.status).toBe(200);
+
+    const detailRes = await adminFeedbackByIdRoute.GET(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        headers: { "x-api-key": adminApiKey },
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(detailRes.status).toBe(200);
+    const detailJson = await readJson(detailRes);
+    const data = detailJson.data as {
+      feedback_type: number;
+      feedback_status: number;
+      promote: boolean;
+      draft: boolean;
+    };
+
+    expect(data.feedback_type).toBe(2);
+    expect(data.feedback_status).toBe(2);
+    expect(data.promote).toBe(true);
+    expect(data.draft).toBe(true);
+  });
+
+  test("promote action requires an explicit boolean value", async () => {
+    const createRes = await feedbackRoute.POST(
+      req("http://localhost/api/v1/feedback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": userApiKey,
+        },
+        body: JSON.stringify({
+          email: "promote-validation@example.com",
+          organisation: 1,
+          feedback_type: 1,
+          feedback_status: 1,
+          page: "/promote-validation",
+          initial_message: "Validate promote.",
+        }),
+      })
+    );
+    expect(createRes.status).toBe(201);
+    const created = await readJson(createRes);
+    const feedbackId = created.id as number;
+
+    const patchRes = await adminFeedbackByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": adminApiKey,
+        },
+        body: JSON.stringify({ action: "promote" }),
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+
+    expect(patchRes.status).toBe(400);
+    await expect(readJson(patchRes)).resolves.toMatchObject({
+      success: false,
+      error: "Invalid promote value",
+    });
+  });
+
+  test("close and wontfix actions resolve feedback status from the database", async () => {
+    const createRes = await feedbackRoute.POST(
+      req("http://localhost/api/v1/feedback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": userApiKey,
+        },
+        body: JSON.stringify({
+          email: "status-actions@example.com",
+          organisation: 1,
+          feedback_type: 1,
+          feedback_status: 1,
+          page: "/status-actions",
+          initial_message: "Status transitions.",
+        }),
+      })
+    );
+    expect(createRes.status).toBe(201);
+    const created = await readJson(createRes);
+    const feedbackId = created.id as number;
+
+    const closeRes = await adminFeedbackByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": adminApiKey,
+        },
+        body: JSON.stringify({ action: "close" }),
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(closeRes.status).toBe(200);
+
+    let detailRes = await adminFeedbackByIdRoute.GET(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        headers: { "x-api-key": adminApiKey },
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(detailRes.status).toBe(200);
+    let detailJson = await readJson(detailRes);
+    expect((detailJson.data as { feedback_status: number }).feedback_status).toBe(15);
+
+    const wontFixRes = await adminFeedbackByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": adminApiKey,
+        },
+        body: JSON.stringify({ action: "wontfix" }),
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(wontFixRes.status).toBe(200);
+
+    detailRes = await adminFeedbackByIdRoute.GET(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        headers: { "x-api-key": adminApiKey },
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(detailRes.status).toBe(200);
+    detailJson = await readJson(detailRes);
+    expect((detailJson.data as { feedback_status: number }).feedback_status).toBe(16);
   });
 
   test("order fields control sorting for projects and feedback metadata", async () => {

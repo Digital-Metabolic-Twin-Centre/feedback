@@ -1,8 +1,32 @@
 import { NextRequest } from "next/server";
-import { getFeedbackById, updateFeedback } from "@/lib/feedback/sqlite-queries";
+import {
+  getFeedbackById,
+  getFeedbackStatusIdByName,
+  getFeedbackTypeIdByName,
+  updateFeedback,
+} from "@/lib/feedback/sqlite-queries";
 import { syncPromotedFeedbackToGitLab } from "@/lib/gitlab-feedback-sync";
 import { logError } from "@/lib/error-logger";
 import { authenticateApiKey, requireAdmin, v1Json, v1PreflightResponse } from "@/lib/api-v1";
+
+function resolveReferenceId(
+  value: unknown,
+  lookup: (name: string) => number | null,
+  invalidMessage: string
+) {
+  if (typeof value === "number") {
+    return { ok: true as const, id: value };
+  }
+
+  if (typeof value === "string") {
+    const id = lookup(value);
+    if (id !== null) {
+      return { ok: true as const, id };
+    }
+  }
+
+  return { ok: false as const, error: invalidMessage };
+}
 
 export async function OPTIONS() {
   return v1PreflightResponse();
@@ -61,27 +85,66 @@ export async function PATCH(
     let result: ReturnType<typeof updateFeedback>;
 
     switch (action) {
-      case "status":
-        if (typeof value !== "number") {
-          return v1Json({ success: false, error: "Invalid status value" }, { status: 400 });
+      case "type": {
+        const resolvedType = resolveReferenceId(value, getFeedbackTypeIdByName, "Invalid type value");
+        if (!resolvedType.ok) {
+          return v1Json({ success: false, error: resolvedType.error }, { status: 400 });
         }
-        result = updateFeedback(id, { feedback_status: value }, authResult.auth.projectId);
+        result = updateFeedback(id, { feedback_type: resolvedType.id }, authResult.auth.projectId);
         break;
+      }
 
-      case "close":
-        result = updateFeedback(id, { feedback_status: 5 }, authResult.auth.projectId);
+      case "status": {
+        const resolvedStatus = resolveReferenceId(value, getFeedbackStatusIdByName, "Invalid status value");
+        if (!resolvedStatus.ok) {
+          return v1Json({ success: false, error: resolvedStatus.error }, { status: 400 });
+        }
+        result = updateFeedback(id, { feedback_status: resolvedStatus.id }, authResult.auth.projectId);
         break;
+      }
 
-      case "wontfix":
-        result = updateFeedback(id, { feedback_status: 6 }, authResult.auth.projectId);
+      case "close": {
+        const closedStatusId = getFeedbackStatusIdByName("Closed");
+        if (closedStatusId === null) {
+          return v1Json({ success: false, error: "Closed status not found" }, { status: 400 });
+        }
+        result = updateFeedback(id, { feedback_status: closedStatusId }, authResult.auth.projectId);
         break;
+      }
+
+      case "wontfix": {
+        const wontFixStatusId = getFeedbackStatusIdByName("Won't Fix");
+        if (wontFixStatusId === null) {
+          return v1Json({ success: false, error: "Won't Fix status not found" }, { status: 400 });
+        }
+        result = updateFeedback(id, { feedback_status: wontFixStatusId }, authResult.auth.projectId);
+        break;
+      }
 
       case "promote":
-        result = updateFeedback(id, { promote: true }, authResult.auth.projectId);
-        if (!("error" in result) && result.rowCount > 0) {
+        if (typeof value !== "boolean") {
+          return v1Json({ success: false, error: "Invalid promote value" }, { status: 400 });
+        }
+        result = updateFeedback(id, { promote: value }, authResult.auth.projectId);
+        if (!("error" in result) && result.rowCount > 0 && value) {
           syncPromotedFeedbackToGitLab(id).catch((err) => {
             logError(err, { operation: "syncPromotedFeedbackToGitLab", resource: String(id) });
           });
+        }
+        break;
+
+      case "draft":
+        if (typeof value !== "boolean") {
+          return v1Json({ success: false, error: "Invalid draft value" }, { status: 400 });
+        }
+        result = updateFeedback(id, { draft: value }, authResult.auth.projectId);
+        if (!("error" in result) && result.rowCount > 0) {
+          const feedback = getFeedbackById(id, authResult.auth.projectId);
+          if (feedback?.promote && !feedback.draft) {
+            syncPromotedFeedbackToGitLab(id).catch((err) => {
+              logError(err, { operation: "syncPromotedFeedbackToGitLab", resource: String(id) });
+            });
+          }
         }
         break;
 

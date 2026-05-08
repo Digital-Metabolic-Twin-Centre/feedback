@@ -263,6 +263,21 @@ curl -X PATCH http://localhost:4001/api/v1/admin/feedback/1 \
   -H "Content-Type: application/json" \
   -H "x-api-key: $ADMIN_API_KEY" \
   -d '{"action":"status","value":2}'
+
+curl -X PATCH http://localhost:4001/api/v1/admin/feedback/1 \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $ADMIN_API_KEY" \
+  -d '{"action":"type","value":1}'
+
+curl -X PATCH http://localhost:4001/api/v1/admin/feedback/1 \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $ADMIN_API_KEY" \
+  -d '{"action":"draft","value":true}'
+
+curl -X PATCH http://localhost:4001/api/v1/admin/feedback/1 \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $ADMIN_API_KEY" \
+  -d '{"action":"promote","value":true}'
 ```
 
 List thread messages:
