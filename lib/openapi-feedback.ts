@@ -236,6 +236,24 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
             "200": { description: "Updated" },
           },
         },
+        delete: {
+          tags: ["Admin Feedback"],
+          summary: "Delete feedback with trash-then-purge behavior (admin key)",
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            apiKeyHeaderParameter,
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer" },
+            },
+          ],
+          responses: {
+            "200": { description: "Deleted or moved to trash" },
+            "404": { description: "Not found" },
+          },
+        },
       },
       "/api/v1/admin/feedback/{id}/messages": {
         get: {

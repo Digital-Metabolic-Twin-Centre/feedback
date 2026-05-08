@@ -278,6 +278,9 @@ curl -X PATCH http://localhost:4001/api/v1/admin/feedback/1 \
   -H "Content-Type: application/json" \
   -H "x-api-key: $ADMIN_API_KEY" \
   -d '{"action":"promote","value":true}'
+
+curl -X DELETE http://localhost:4001/api/v1/admin/feedback/1 \
+  -H "x-api-key: $ADMIN_API_KEY"
 ```
 
 List thread messages:

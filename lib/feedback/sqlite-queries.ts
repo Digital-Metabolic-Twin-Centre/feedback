@@ -382,6 +382,43 @@ export function updateFeedback(
   return { rowCount: result.changes };
 }
 
+export function deleteFeedbackById(
+  id: number,
+  projectId?: number
+): { outcome: "soft_deleted" | "hard_deleted" } | { error: "not_found" } {
+  const existing = db
+    .prepare(
+      `SELECT id, soft_delete
+       FROM feedback
+       WHERE id = ? ${projectId ? "AND project_id = ?" : ""}
+       LIMIT 1`
+    )
+    .get(...(projectId ? [id, projectId] : [id])) as { id: number; soft_delete: number } | undefined;
+
+  if (!existing) {
+    return { error: "not_found" };
+  }
+
+  if (existing.soft_delete === 0) {
+    const now = new Date().toISOString();
+    db.prepare(
+      `UPDATE feedback
+       SET soft_delete = 1, updated_at = ?
+       WHERE id = ? ${projectId ? "AND project_id = ?" : ""}`
+    ).run(...(projectId ? [now, id, projectId] : [now, id]));
+
+    return { outcome: "soft_deleted" };
+  }
+
+  db.transaction(() => {
+    db.prepare(`DELETE FROM feedback_messages WHERE feedback_id = ?`).run(id);
+    db.prepare(`DELETE FROM feedback WHERE id = ? ${projectId ? "AND project_id = ?" : ""}`)
+      .run(...(projectId ? [id, projectId] : [id]));
+  })();
+
+  return { outcome: "hard_deleted" };
+}
+
 //  Thread messages 
 
 export function getFeedbackOwner(

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import {
+  deleteFeedbackById,
   getFeedbackById,
   getFeedbackStatusIdByName,
   getFeedbackTypeIdByName,
@@ -171,6 +172,40 @@ export async function PATCH(
     return v1Json({ success: true });
   } catch (err) {
     logError(err, { operation: "v1/admin/feedback PATCH", resource: req.url });
+    const message = err instanceof Error ? err.message : "Internal server error";
+    return v1Json({ success: false, error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const authResult = await authenticateApiKey(req);
+    if (!authResult.ok) return authResult.response;
+
+    const adminError = requireAdmin(authResult.auth);
+    if (adminError) return adminError;
+
+    const { id: idStr } = await params;
+    const id = parseInt(idStr, 10);
+    if (isNaN(id)) {
+      return v1Json({ success: false, error: "Invalid ID" }, { status: 400 });
+    }
+
+    const result = deleteFeedbackById(id, authResult.auth.projectId);
+    if ("error" in result) {
+      return v1Json({ success: false, error: "Feedback not found for this project." }, { status: 404 });
+    }
+
+    return v1Json({
+      success: true,
+      deletedId: id,
+      deletion: result.outcome,
+    });
+  } catch (err) {
+    logError(err, { operation: "v1/admin/feedback DELETE", resource: req.url });
     const message = err instanceof Error ? err.message : "Internal server error";
     return v1Json({ success: false, error: message }, { status: 500 });
   }

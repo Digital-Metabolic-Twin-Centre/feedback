@@ -831,6 +831,93 @@ describe("Headless API endpoints", () => {
     expect((detailJson.data as { feedback_status: number }).feedback_status).toBe(16);
   });
 
+  test("admin feedback DELETE trashes first and permanently deletes trashed feedback with thread", async () => {
+    const createRes = await feedbackRoute.POST(
+      req("http://localhost/api/v1/feedback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": userApiKey,
+        },
+        body: JSON.stringify({
+          email: "delete-feedback@example.com",
+          organisation: 1,
+          feedback_type: 1,
+          feedback_status: 1,
+          page: "/delete-feedback",
+          initial_message: "Delete flow.",
+        }),
+      })
+    );
+    expect(createRes.status).toBe(201);
+    const created = await readJson(createRes);
+    const feedbackId = created.id as number;
+
+    const replyRes = await adminMessagesRoute.POST(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}/messages`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": adminApiKey,
+        },
+        body: JSON.stringify({ message: "Thread message to purge." }),
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(replyRes.status).toBe(201);
+
+    const firstDeleteRes = await adminFeedbackByIdRoute.DELETE(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        method: "DELETE",
+        headers: { "x-api-key": adminApiKey },
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(firstDeleteRes.status).toBe(200);
+    await expect(readJson(firstDeleteRes)).resolves.toMatchObject({
+      success: true,
+      deletedId: feedbackId,
+      deletion: "soft_deleted",
+    });
+
+    let detailRes = await adminFeedbackByIdRoute.GET(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        headers: { "x-api-key": adminApiKey },
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(detailRes.status).toBe(200);
+    let detailJson = await readJson(detailRes);
+    expect((detailJson.data as { soft_delete: boolean }).soft_delete).toBe(true);
+
+    const secondDeleteRes = await adminFeedbackByIdRoute.DELETE(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        method: "DELETE",
+        headers: { "x-api-key": adminApiKey },
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(secondDeleteRes.status).toBe(200);
+    await expect(readJson(secondDeleteRes)).resolves.toMatchObject({
+      success: true,
+      deletedId: feedbackId,
+      deletion: "hard_deleted",
+    });
+
+    detailRes = await adminFeedbackByIdRoute.GET(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        headers: { "x-api-key": adminApiKey },
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(detailRes.status).toBe(404);
+
+    const threadCount = db
+      .prepare(`SELECT COUNT(*) AS c FROM feedback_messages WHERE feedback_id = ?`)
+      .get(feedbackId) as { c: number };
+    expect(threadCount.c).toBe(0);
+  });
+
   test("order fields control sorting for projects and feedback metadata", async () => {
     const bootstrapHeaders = {
       "content-type": "application/json",
