@@ -804,7 +804,7 @@ describe("Headless API endpoints", () => {
       { params: Promise.resolve({ id: String(feedbackId) }) }
     );
     expect(detailRes.status).toBe(200);
-    let detailJson = await readJson(detailRes);
+    const detailJson = await readJson(detailRes);
     expect((detailJson.data as { feedback_status: number }).feedback_status).toBe(15);
 
     const wontFixRes = await adminFeedbackByIdRoute.PATCH(
@@ -887,7 +887,7 @@ describe("Headless API endpoints", () => {
       { params: Promise.resolve({ id: String(feedbackId) }) }
     );
     expect(detailRes.status).toBe(200);
-    let detailJson = await readJson(detailRes);
+    const detailJson = await readJson(detailRes);
     expect((detailJson.data as { soft_delete: boolean }).soft_delete).toBe(true);
 
     const secondDeleteRes = await adminFeedbackByIdRoute.DELETE(
