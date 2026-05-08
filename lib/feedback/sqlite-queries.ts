@@ -18,6 +18,7 @@ export type InsertFeedbackInput = {
   email: string;
   organisation?: number | null;
   page?: string | null;
+  initial_message?: string | null;
   feedback_type?: number | null;
   feedback_status?: number | null;
   promote?: boolean;
@@ -117,6 +118,7 @@ export function selectfeedback(
       f.organisation,
       o.name   AS organisation_name,
       f.page,
+      f.initial_message,
       f.feedback_type,
       ft.name  AS feedback_type_name,
       f.feedback_status,
@@ -196,6 +198,7 @@ export function getFeedbackById(
          f.organisation,
          o.name   AS organisation_name,
          f.page,
+         f.initial_message,
          f.feedback_type,
          ft.name  AS feedback_type_name,
          f.feedback_status,
@@ -268,9 +271,9 @@ export function insertFeedback(data: InsertFeedbackInput): { insertedId: number 
   const result = db
     .prepare(
       `INSERT INTO feedback
-         (project_id, email, submitter_ref, organisation, page, feedback_type, feedback_status,
+         (project_id, email, submitter_ref, organisation, page, initial_message, feedback_type, feedback_status,
           promote, draft, created_by, created_at, updated_by, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        RETURNING id`
     )
     .get(
@@ -279,6 +282,7 @@ export function insertFeedback(data: InsertFeedbackInput): { insertedId: number 
       submitter_ref,
       data.organisation ?? null,
       data.page ?? null,
+      data.initial_message ?? null,
       data.feedback_type ?? null,
       feedbacktatus,
       data.promote ? 1 : 0,

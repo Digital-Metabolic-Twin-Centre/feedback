@@ -6,6 +6,7 @@ export interface FeedbackData {
   organisation: number;
   organisation_name?: string | null;
   page: string | null;
+  initial_message?: string | null;
   feedback_type: number;
   feedback_type_name?: string | null;
   feedback_status: number;

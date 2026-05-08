@@ -84,6 +84,7 @@ function applySchema(db: Database.Database) {
       submitter_ref   TEXT,
       organisation   INTEGER REFERENCES organisations(id),
       page            TEXT,
+      initial_message TEXT,
       feedback_type   INTEGER REFERENCES feedback_types(id),
       feedback_status INTEGER REFERENCES feedback_status(id),
       "order"         INTEGER NOT NULL DEFAULT 0,
@@ -178,6 +179,12 @@ function applySchema(db: Database.Database) {
   if (!hasProjectId) {
     db.exec(`ALTER TABLE feedback ADD COLUMN project_id INTEGER REFERENCES projects(id)`);
   }
+
+  const hasInitialMessage = feedbackColumns.some((col) => col.name === "initial_message");
+  if (!hasInitialMessage) {
+    db.exec(`ALTER TABLE feedback ADD COLUMN initial_message TEXT`);
+  }
+
   db.exec(`CREATE INDEX IF NOT EXISTS idx_feedback_project_id ON feedback(project_id)`);
 
   ensureOrderColumn(db, "projects");
