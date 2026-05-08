@@ -7,8 +7,25 @@ import {
   updateFeedback,
 } from "@/lib/feedback/sqlite-queries";
 import { syncPromotedFeedbackToGitLab } from "@/lib/gitlab-feedback-sync";
+import { syncPromotedFeedbackToGitHub } from "@/lib/github-feedback-sync";
+import { getAvailablePlatforms } from "@/lib/platform-detector";
 import { logError } from "@/lib/error-logger";
 import { authenticateApiKey, requireAdmin, v1Json, v1PreflightResponse } from "@/lib/api-v1";
+
+function syncToAvailablePlatforms(feedbackId: number): void {
+  const platforms = getAvailablePlatforms();
+  for (const platform of platforms) {
+    if (platform === "gitlab") {
+      syncPromotedFeedbackToGitLab(feedbackId).catch((err) => {
+        logError(err, { operation: "syncPromotedFeedbackToGitLab", resource: String(feedbackId) });
+      });
+    } else if (platform === "github") {
+      syncPromotedFeedbackToGitHub(feedbackId).catch((err) => {
+        logError(err, { operation: "syncPromotedFeedbackToGitHub", resource: String(feedbackId) });
+      });
+    }
+  }
+}
 
 function resolveReferenceId(
   value: unknown,
@@ -110,6 +127,12 @@ export async function PATCH(
           return v1Json({ success: false, error: "Closed status not found" }, { status: 400 });
         }
         result = updateFeedback(id, { feedback_status: closedStatusId }, authResult.auth.projectId);
+        if (!("error" in result) && result.rowCount > 0) {
+          const feedback = getFeedbackById(id, authResult.auth.projectId);
+          if (feedback?.promote && !feedback.draft) {
+            syncToAvailablePlatforms(id);
+          }
+        }
         break;
       }
 
@@ -119,6 +142,12 @@ export async function PATCH(
           return v1Json({ success: false, error: "Won't Fix status not found" }, { status: 400 });
         }
         result = updateFeedback(id, { feedback_status: wontFixStatusId }, authResult.auth.projectId);
+        if (!("error" in result) && result.rowCount > 0) {
+          const feedback = getFeedbackById(id, authResult.auth.projectId);
+          if (feedback?.promote && !feedback.draft) {
+            syncToAvailablePlatforms(id);
+          }
+        }
         break;
       }
 
@@ -128,9 +157,7 @@ export async function PATCH(
         }
         result = updateFeedback(id, { promote: value }, authResult.auth.projectId);
         if (!("error" in result) && result.rowCount > 0 && value) {
-          syncPromotedFeedbackToGitLab(id).catch((err) => {
-            logError(err, { operation: "syncPromotedFeedbackToGitLab", resource: String(id) });
-          });
+          syncToAvailablePlatforms(id);
         }
         break;
 
@@ -142,9 +169,7 @@ export async function PATCH(
         if (!("error" in result) && result.rowCount > 0) {
           const feedback = getFeedbackById(id, authResult.auth.projectId);
           if (feedback?.promote && !feedback.draft) {
-            syncPromotedFeedbackToGitLab(id).catch((err) => {
-              logError(err, { operation: "syncPromotedFeedbackToGitLab", resource: String(id) });
-            });
+            syncToAvailablePlatforms(id);
           }
         }
         break;

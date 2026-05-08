@@ -14,6 +14,10 @@ const envSchema = z.object({
   GITLAB_ISSUES_REPORTING_TOKEN: z.string().min(1).optional(),
   GITLAB_REPORTING_PROJECT_ID: z.string().min(1).optional(),
 
+  GITHUB_ISSUES_REPORTING_TOKEN: z.string().min(1).optional(),
+  GITHUB_REPORTING_OWNER: z.string().min(1).optional(),
+  GITHUB_REPORTING_REPO: z.string().min(1).optional(),
+
   MAIL_PROVIDER: z.string().optional(),
   SMTP_HOST: z.string().min(1).optional(),
   SMTP_PORT: z.string().min(1).optional(),

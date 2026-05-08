@@ -498,6 +498,8 @@ export type FeedbackForGitLab = {
   draft: boolean;
   gitlab_issue_id: number | null;
   gitlab_issue_url: string | null;
+  github_issue_id: number | null;
+  github_issue_url: string | null;
   promoted_at: string | null;
   created_by: string | null;
   created_at: string | null;
@@ -530,6 +532,8 @@ export function loadFeedbackForGitLab(feedbackId: number): {
          f.draft,
          f.gitlab_issue_id,
          f.gitlab_issue_url,
+         f.github_issue_id,
+         f.github_issue_url,
          f.promoted_at,
          f.created_by,
          f.created_at,
@@ -575,6 +579,20 @@ export function persistGitLabIssueLink(
          promoted_at = COALESCE(promoted_at, ?)
      WHERE id = ?`
   ).run(iid, url, new Date().toISOString(), feedbackId);
+}
+
+export function persistGitHubIssueLink(
+  feedbackId: number,
+  issueNumber: number,
+  url: string | null
+): void {
+  db.prepare(
+    `UPDATE feedback
+     SET github_issue_id = ?,
+         github_issue_url = COALESCE(?, github_issue_url),
+         promoted_at = COALESCE(promoted_at, ?)
+     WHERE id = ?`
+  ).run(issueNumber, url, new Date().toISOString(), feedbackId);
 }
 
 //  Notification audit 

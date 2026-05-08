@@ -196,6 +196,16 @@ if (!hasInitialMessage) {
   db.exec(`ALTER TABLE feedback ADD COLUMN initial_message TEXT`);
 }
 
+const hasGitHubIssueId = feedbackColumns.some((col) => col.name === "github_issue_id");
+if (!hasGitHubIssueId) {
+  db.exec(`ALTER TABLE feedback ADD COLUMN github_issue_id INTEGER`);
+}
+
+const hasGitHubIssueUrl = feedbackColumns.some((col) => col.name === "github_issue_url");
+if (!hasGitHubIssueUrl) {
+  db.exec(`ALTER TABLE feedback ADD COLUMN github_issue_url TEXT`);
+}
+
 db.exec(`CREATE INDEX IF NOT EXISTS idx_feedback_project_id ON feedback(project_id)`);
 
 const defaultProject = db

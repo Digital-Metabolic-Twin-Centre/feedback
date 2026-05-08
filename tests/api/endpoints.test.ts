@@ -437,7 +437,8 @@ describe("Headless API endpoints", () => {
       { params: Promise.resolve({ id: String(createdFeedbackId) }) }
     );
     expect(detailRes.status).toBe(200);
-    const detailJson = await readJson(detailRes);
+    // eslint-disable-next-line prefer-const
+    let detailJson = await readJson(detailRes);
     const detailData = detailJson.data as { feedback: { id: number } };
     expect(detailData.feedback.id).toBe(createdFeedbackId);
 
@@ -707,7 +708,8 @@ describe("Headless API endpoints", () => {
       { params: Promise.resolve({ id: String(feedbackId) }) }
     );
     expect(detailRes.status).toBe(200);
-    const detailJson = await readJson(detailRes);
+    // eslint-disable-next-line prefer-const
+    let detailJson = await readJson(detailRes);
     const data = detailJson.data as {
       feedback_type: number;
       feedback_status: number;
@@ -804,7 +806,7 @@ describe("Headless API endpoints", () => {
       { params: Promise.resolve({ id: String(feedbackId) }) }
     );
     expect(detailRes.status).toBe(200);
-    const detailJson = await readJson(detailRes);
+    let detailJson = await readJson(detailRes);
     expect((detailJson.data as { feedback_status: number }).feedback_status).toBe(15);
 
     const wontFixRes = await adminFeedbackByIdRoute.PATCH(

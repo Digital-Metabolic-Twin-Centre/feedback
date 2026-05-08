@@ -10,6 +10,8 @@ import {
   notifyfeedbackubmitterOfReply,
 } from "@/lib/feedback-notifications";
 import { syncPromotedFeedbackToGitLab } from "@/lib/gitlab-feedback-sync";
+import { syncPromotedFeedbackToGitHub } from "@/lib/github-feedback-sync";
+import { getAvailablePlatforms } from "@/lib/platform-detector";
 import { authenticateApiKey, requireAdmin, v1Json, v1PreflightResponse } from "@/lib/api-v1";
 import { logError } from "@/lib/error-logger";
 
@@ -121,9 +123,19 @@ export async function POST(
       }).catch((err) => logError(err, { operation: "notifyFeedbackDistributionOfReply", resource: String(feedbackId) }));
     }
 
-    syncPromotedFeedbackToGitLab(feedbackId).catch((err) => {
-      logError(err, { operation: "syncPromotedFeedbackToGitLabOnReply", resource: String(feedbackId) });
-    });
+    // Sync to available platforms if feedback is promoted
+    const platforms = getAvailablePlatforms();
+    for (const platform of platforms) {
+      if (platform === "gitlab") {
+        syncPromotedFeedbackToGitLab(feedbackId).catch((err) => {
+          logError(err, { operation: "syncPromotedFeedbackToGitLabOnReply", resource: String(feedbackId) });
+        });
+      } else if (platform === "github") {
+        syncPromotedFeedbackToGitHub(feedbackId).catch((err) => {
+          logError(err, { operation: "syncPromotedFeedbackToGitHubOnReply", resource: String(feedbackId) });
+        });
+      }
+    }
 
     const messages = getThreadMessages(feedbackId, authResult.auth.projectId);
     return v1Json({ success: true, data: messages }, { status: 201 });
