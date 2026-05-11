@@ -8,6 +8,7 @@ Headless feedback management backend built with Next.js route handlers and SQLit
 - Project-scoped API keys via `x-api-key`
 - Bootstrap-token protected admin key and project management
 - Feedback thread support with initial and follow-up messages
+- Promotion sync to GitLab issues and/or GitHub issues
 - OpenAPI JSON and Swagger UI docs
 - SQLite-backed storage with hashed API keys
 
@@ -71,6 +72,18 @@ Feedback creation and thread replies are separate operations.
 - `POST /api/v1/feedback/:id` adds a later user follow-up message to the same thread.
 - `POST /api/v1/admin/feedback/:id/messages` adds an admin reply.
 - Closed feedback cannot accept new replies.
+- Replies on promoted feedback are synced to every configured issue platform.
+
+## Promotion Sync
+
+Promoted feedback can be mirrored to external issue trackers.
+
+- GitLab sync is enabled when both `GITLAB_REPORTING_PROJECT_ID` and `GITLAB_ISSUES_REPORTING_TOKEN` are set.
+- GitHub sync is enabled when `GITHUB_REPORTING_OWNER`, `GITHUB_REPORTING_REPO`, and `GITHUB_ISSUES_REPORTING_TOKEN` are set.
+- If both GitLab and GitHub are configured, promoted feedback syncs to both.
+- Promotion creates one issue per feedback item, uses the first thread message as the initial issue body, and syncs later replies as notes/comments.
+- Closing or reopening promoted feedback updates the linked issue state.
+- Admin promote/close/draft/status actions wait for external sync and return an error if a configured platform fails.
 
 ## Environment
 
@@ -87,12 +100,30 @@ MAIL_PROVIDER=disabled
 SQLITE_PATH=./data/feedback.db
 ```
 
+Optional issue-sync configuration:
+
+```env
+GITLAB_REPORTING_PROJECT_ID=group/project
+GITLAB_ISSUES_REPORTING_TOKEN=glpat-...
+
+GITHUB_REPORTING_OWNER=your-org
+GITHUB_REPORTING_REPO=your-repo
+GITHUB_ISSUES_REPORTING_TOKEN=github_pat_...
+```
+
 ## Local Development
 
 ```bash
 npm install
 npm run migrate:sqlite-seed
 npm run dev
+```
+
+Run checks locally:
+
+```bash
+npm test -- --runInBand
+npm run lint
 ```
 
 If you hit stale `.next` issues:
@@ -233,6 +264,21 @@ curl -X POST http://localhost:4001/api/v1/feedback/1 \
   -d '{"message":"I have more details to add."}'
 ```
 
+Create feedback already marked as promoted or draft:
+
+```bash
+curl -X POST http://localhost:4001/api/v1/feedback \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{
+    "email":"user@example.com",
+    "page":"/home",
+    "initial_message":"Please escalate this",
+    "promote": true,
+    "draft": false
+  }'
+```
+
 Get feedback form metadata:
 
 ```bash
@@ -279,9 +325,32 @@ curl -X PATCH http://localhost:4001/api/v1/admin/feedback/1 \
   -H "x-api-key: $ADMIN_API_KEY" \
   -d '{"action":"promote","value":true}'
 
+curl -X PATCH http://localhost:4001/api/v1/admin/feedback/1 \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $ADMIN_API_KEY" \
+  -d '{"action":"promote","value":"yes"}'
+
+curl -X PATCH http://localhost:4001/api/v1/admin/feedback/1 \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $ADMIN_API_KEY" \
+  -d '{"action":"close"}'
+
 curl -X DELETE http://localhost:4001/api/v1/admin/feedback/1 \
   -H "x-api-key: $ADMIN_API_KEY"
 ```
+
+Supported `action` values for `PATCH /api/v1/admin/feedback/:id`:
+
+- `type`
+- `status`
+- `close`
+- `wontfix`
+- `promote`
+- `draft`
+- `delete`
+- `restore`
+
+For `promote` and `draft`, the API accepts booleans and boolean-like strings such as `"true"`, `"false"`, `"yes"`, and `"no"`.
 
 List thread messages:
 
@@ -298,6 +367,24 @@ curl -X POST http://localhost:4001/api/v1/admin/feedback/1/messages \
   -H "x-api-key: $ADMIN_API_KEY" \
   -d '{"message":"Thanks, this is now being worked on."}'
 ```
+
+## Testing GitHub Sync
+
+To test GitHub issue sync locally, configure:
+
+```env
+GITHUB_REPORTING_OWNER=your-org
+GITHUB_REPORTING_REPO=your-repo
+GITHUB_ISSUES_REPORTING_TOKEN=github_pat_...
+```
+
+Then:
+
+1. Start the app with `npm run dev`.
+2. Create feedback with `POST /api/v1/feedback`.
+3. Promote it with `PATCH /api/v1/admin/feedback/:id` and `{"action":"promote","value":"yes"}`.
+4. Add a reply and confirm it appears as a GitHub issue comment.
+5. Close the feedback and confirm the GitHub issue closes.
 
 ## Docs
 
