@@ -93,6 +93,8 @@ function applySchema(db: Database.Database) {
       soft_delete     INTEGER NOT NULL DEFAULT 0,
       gitlab_issue_id INTEGER,
       gitlab_issue_url TEXT,
+      github_issue_id INTEGER,
+      github_issue_url TEXT,
       promoted_at      TEXT,
       created_by      TEXT    NOT NULL DEFAULT 'anonymous',
       created_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
@@ -183,6 +185,16 @@ function applySchema(db: Database.Database) {
   const hasInitialMessage = feedbackColumns.some((col) => col.name === "initial_message");
   if (!hasInitialMessage) {
     db.exec(`ALTER TABLE feedback ADD COLUMN initial_message TEXT`);
+  }
+
+  const hasGitHubIssueId = feedbackColumns.some((col) => col.name === "github_issue_id");
+  if (!hasGitHubIssueId) {
+    db.exec(`ALTER TABLE feedback ADD COLUMN github_issue_id INTEGER`);
+  }
+
+  const hasGitHubIssueUrl = feedbackColumns.some((col) => col.name === "github_issue_url");
+  if (!hasGitHubIssueUrl) {
+    db.exec(`ALTER TABLE feedback ADD COLUMN github_issue_url TEXT`);
   }
 
   db.exec(`CREATE INDEX IF NOT EXISTS idx_feedback_project_id ON feedback(project_id)`);

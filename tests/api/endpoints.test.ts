@@ -123,6 +123,21 @@ describe("Headless API endpoints", () => {
     expect(headRes.status).toBe(200);
   });
 
+  test("feedback schema includes GitLab and GitHub sync columns", () => {
+    const columns = db.prepare("PRAGMA table_info(feedback)").all() as Array<{ name: string }>;
+    const names = columns.map((column) => column.name);
+
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "gitlab_issue_id",
+        "gitlab_issue_url",
+        "github_issue_id",
+        "github_issue_url",
+        "promoted_at",
+      ]),
+    );
+  });
+
   test("openapi and docs endpoints", async () => {
     const openApiRes = await openApiRoute.GET();
     expect(openApiRes.status).toBe(200);
@@ -721,6 +736,68 @@ describe("Headless API endpoints", () => {
     expect(data.feedback_status).toBe(2);
     expect(data.promote).toBe(true);
     expect(data.draft).toBe(true);
+  });
+
+  test("promote and draft actions accept boolean-like strings", async () => {
+    const createRes = await feedbackRoute.POST(
+      req("http://localhost/api/v1/feedback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": userApiKey,
+        },
+        body: JSON.stringify({
+          email: "string-bool@example.com",
+          organisation: 1,
+          feedback_type: 1,
+          feedback_status: 1,
+          page: "/string-bool",
+          initial_message: "String bool values.",
+        }),
+      }),
+    );
+    expect(createRes.status).toBe(201);
+    const created = await readJson(createRes);
+    const feedbackId = created.id as number;
+
+    const promoteRes = await adminFeedbackByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": adminApiKey,
+        },
+        body: JSON.stringify({ action: "promote", value: "yes" }),
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) },
+    );
+    expect(promoteRes.status).toBe(200);
+
+    const draftRes = await adminFeedbackByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": adminApiKey,
+        },
+        body: JSON.stringify({ action: "draft", value: "false" }),
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) },
+    );
+    expect(draftRes.status).toBe(200);
+
+    const detailRes = await adminFeedbackByIdRoute.GET(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        headers: { "x-api-key": adminApiKey },
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) },
+    );
+    expect(detailRes.status).toBe(200);
+    const detailJson = await readJson(detailRes);
+    const data = detailJson.data as { promote: boolean; draft: boolean };
+
+    expect(data.promote).toBe(true);
+    expect(data.draft).toBe(false);
   });
 
   test("promote action requires an explicit boolean value", async () => {

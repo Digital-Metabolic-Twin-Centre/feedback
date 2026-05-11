@@ -6,25 +6,30 @@ import {
   getFeedbackTypeIdByName,
   updateFeedback,
 } from "@/lib/feedback/sqlite-queries";
-import { syncPromotedFeedbackToGitLab } from "@/lib/gitlab-feedback-sync";
-import { syncPromotedFeedbackToGitHub } from "@/lib/github-feedback-sync";
-import { getAvailablePlatforms } from "@/lib/platform-detector";
 import { logError } from "@/lib/error-logger";
 import { authenticateApiKey, requireAdmin, v1Json, v1PreflightResponse } from "@/lib/api-v1";
+import {
+  PlatformSyncError,
+  syncPromotedFeedbackToAvailablePlatforms,
+  type PlatformSyncResult,
+} from "@/lib/promoted-feedback-sync";
 
-function syncToAvailablePlatforms(feedbackId: number): void {
-  const platforms = getAvailablePlatforms();
-  for (const platform of platforms) {
-    if (platform === "gitlab") {
-      syncPromotedFeedbackToGitLab(feedbackId).catch((err) => {
-        logError(err, { operation: "syncPromotedFeedbackToGitLab", resource: String(feedbackId) });
-      });
-    } else if (platform === "github") {
-      syncPromotedFeedbackToGitHub(feedbackId).catch((err) => {
-        logError(err, { operation: "syncPromotedFeedbackToGitHub", resource: String(feedbackId) });
-      });
+function parseBooleanLike(value: unknown, invalidMessage: string) {
+  if (typeof value === "boolean") {
+    return { ok: true as const, value };
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "yes", "1"].includes(normalized)) {
+      return { ok: true as const, value: true };
+    }
+    if (["false", "no", "0"].includes(normalized)) {
+      return { ok: true as const, value: false };
     }
   }
+
+  return { ok: false as const, error: invalidMessage };
 }
 
 function resolveReferenceId(
@@ -101,6 +106,7 @@ export async function PATCH(
     const { action, value } = body;
 
     let result: ReturnType<typeof updateFeedback>;
+    let syncResults: PlatformSyncResult[] | undefined;
 
     switch (action) {
       case "type": {
@@ -130,7 +136,7 @@ export async function PATCH(
         if (!("error" in result) && result.rowCount > 0) {
           const feedback = getFeedbackById(id, authResult.auth.projectId);
           if (feedback?.promote && !feedback.draft) {
-            syncToAvailablePlatforms(id);
+            syncResults = await syncPromotedFeedbackToAvailablePlatforms(id);
           }
         }
         break;
@@ -145,34 +151,38 @@ export async function PATCH(
         if (!("error" in result) && result.rowCount > 0) {
           const feedback = getFeedbackById(id, authResult.auth.projectId);
           if (feedback?.promote && !feedback.draft) {
-            syncToAvailablePlatforms(id);
+            syncResults = await syncPromotedFeedbackToAvailablePlatforms(id);
           }
         }
         break;
       }
 
-      case "promote":
-        if (typeof value !== "boolean") {
-          return v1Json({ success: false, error: "Invalid promote value" }, { status: 400 });
+      case "promote": {
+        const promoteValue = parseBooleanLike(value, "Invalid promote value");
+        if (!promoteValue.ok) {
+          return v1Json({ success: false, error: promoteValue.error }, { status: 400 });
         }
-        result = updateFeedback(id, { promote: value }, authResult.auth.projectId);
-        if (!("error" in result) && result.rowCount > 0 && value) {
-          syncToAvailablePlatforms(id);
+        result = updateFeedback(id, { promote: promoteValue.value }, authResult.auth.projectId);
+        if (!("error" in result) && result.rowCount > 0 && promoteValue.value) {
+          syncResults = await syncPromotedFeedbackToAvailablePlatforms(id);
         }
         break;
+      }
 
-      case "draft":
-        if (typeof value !== "boolean") {
-          return v1Json({ success: false, error: "Invalid draft value" }, { status: 400 });
+      case "draft": {
+        const draftValue = parseBooleanLike(value, "Invalid draft value");
+        if (!draftValue.ok) {
+          return v1Json({ success: false, error: draftValue.error }, { status: 400 });
         }
-        result = updateFeedback(id, { draft: value }, authResult.auth.projectId);
+        result = updateFeedback(id, { draft: draftValue.value }, authResult.auth.projectId);
         if (!("error" in result) && result.rowCount > 0) {
           const feedback = getFeedbackById(id, authResult.auth.projectId);
           if (feedback?.promote && !feedback.draft) {
-            syncToAvailablePlatforms(id);
+            syncResults = await syncPromotedFeedbackToAvailablePlatforms(id);
           }
         }
         break;
+      }
 
       case "delete":
         result = updateFeedback(id, { soft_delete: true }, authResult.auth.projectId);
@@ -194,8 +204,22 @@ export async function PATCH(
       return v1Json({ success: false, error: "Feedback not found for this project." }, { status: 404 });
     }
 
-    return v1Json({ success: true });
+    return v1Json(syncResults ? { success: true, sync: syncResults } : { success: true });
   } catch (err) {
+    if (err instanceof PlatformSyncError) {
+      logError(err, { operation: "v1/admin/feedback PATCH sync", resource: req.url });
+      return v1Json(
+        {
+          success: false,
+          error: err.message,
+          sync: {
+            failures: err.failures,
+            partialResults: err.partialResults,
+          },
+        },
+        { status: 502 },
+      );
+    }
     logError(err, { operation: "v1/admin/feedback PATCH", resource: req.url });
     const message = err instanceof Error ? err.message : "Internal server error";
     return v1Json({ success: false, error: message }, { status: 500 });

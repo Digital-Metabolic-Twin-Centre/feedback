@@ -9,11 +9,9 @@ import {
   notifyFeedbackDistributionOfReply,
   notifyfeedbackubmitterOfReply,
 } from "@/lib/feedback-notifications";
-import { syncPromotedFeedbackToGitLab } from "@/lib/gitlab-feedback-sync";
-import { syncPromotedFeedbackToGitHub } from "@/lib/github-feedback-sync";
-import { getAvailablePlatforms } from "@/lib/platform-detector";
 import { authenticateApiKey, requireAdmin, v1Json, v1PreflightResponse } from "@/lib/api-v1";
 import { logError } from "@/lib/error-logger";
+import { syncPromotedFeedbackToAvailablePlatforms } from "@/lib/promoted-feedback-sync";
 
 const postSchema = z.object({
   message: z.string().min(1).max(12000),
@@ -123,19 +121,9 @@ export async function POST(
       }).catch((err) => logError(err, { operation: "notifyFeedbackDistributionOfReply", resource: String(feedbackId) }));
     }
 
-    // Sync to available platforms if feedback is promoted
-    const platforms = getAvailablePlatforms();
-    for (const platform of platforms) {
-      if (platform === "gitlab") {
-        syncPromotedFeedbackToGitLab(feedbackId).catch((err) => {
-          logError(err, { operation: "syncPromotedFeedbackToGitLabOnReply", resource: String(feedbackId) });
-        });
-      } else if (platform === "github") {
-        syncPromotedFeedbackToGitHub(feedbackId).catch((err) => {
-          logError(err, { operation: "syncPromotedFeedbackToGitHubOnReply", resource: String(feedbackId) });
-        });
-      }
-    }
+    syncPromotedFeedbackToAvailablePlatforms(feedbackId).catch((err) => {
+      logError(err, { operation: "syncPromotedFeedbackToPlatformsOnReply", resource: String(feedbackId) });
+    });
 
     const messages = getThreadMessages(feedbackId, authResult.auth.projectId);
     return v1Json({ success: true, data: messages }, { status: 201 });

@@ -6,8 +6,8 @@ import {
   notifyFeedbackDistributionOfReply,
   notifyfeedbackubmitterOfReply,
 } from "@/lib/feedback-notifications";
-import { syncPromotedFeedbackToGitLab } from "@/lib/gitlab-feedback-sync";
 import { logError } from "@/lib/error-logger";
+import { syncPromotedFeedbackToAvailablePlatforms } from "@/lib/promoted-feedback-sync";
 
 const postSchema = z.object({
   message: z.string().min(1).max(12000),
@@ -116,8 +116,8 @@ export async function POST(
       replierRole: "User",
     }).catch((err) => logError(err, { operation: "notifyFeedbackDistributionOfReply", resource: String(feedbackId) }));
 
-    syncPromotedFeedbackToGitLab(feedbackId).catch((err) => {
-      logError(err, { operation: "syncPromotedFeedbackToGitLabOnUserReply", resource: String(feedbackId) });
+    syncPromotedFeedbackToAvailablePlatforms(feedbackId).catch((err) => {
+      logError(err, { operation: "syncPromotedFeedbackToPlatformsOnUserReply", resource: String(feedbackId) });
     });
 
     const messages = getThreadMessages(feedbackId, authResult.auth.projectId);
