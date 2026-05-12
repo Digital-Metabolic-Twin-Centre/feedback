@@ -1,16 +1,21 @@
 services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: feedback-app
+  feedback:
+    image: ghcr.io/digital-metabolic-twin-centre/feedback:latest
+    container_name: dmtc-feedback
+
     env_file:
-      - .env.local
-    ports:
-      - "4001:4001"
+      - .env
+
+    expose:
+      - "4001"
+
+    # Persistent feedback storage shared via host mount
     volumes:
-      - feedback_data:/app/data
+      - /opt/dmtc_production/feedback:/app/data
+
     restart: always
 
-volumes:
-  feedback_data:
+    # suggested resource limits for production deployment, adjust as needed
+    mem_limit: 128m
+    mem_reservation: 64m
+    cpus: 0.2
