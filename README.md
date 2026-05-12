@@ -33,6 +33,11 @@ Additional generated diagrams are available in [`diagrams/`](./diagrams), includ
 - `POST /api/v1/admin/keys/:id/rotate`
 - `GET /api/v1/admin/projects`
 - `POST /api/v1/admin/projects`
+- `GET /api/v1/admin/meta/:resource`
+- `POST /api/v1/admin/meta/:resource`
+- `GET /api/v1/admin/meta/:resource/:id`
+- `PATCH /api/v1/admin/meta/:resource/:id`
+- `DELETE /api/v1/admin/meta/:resource/:id`
 
 These routes require `x-bootstrap-token`.
 
@@ -57,7 +62,7 @@ These routes require an API key created with `isAdmin: true`.
 
 ## Auth Model
 
-- `x-bootstrap-token` is only for bootstrap and platform management routes under `/api/v1/admin/keys*` and `/api/v1/admin/projects*`.
+- `x-bootstrap-token` is only for bootstrap and platform management routes under `/api/v1/admin/keys*`, `/api/v1/admin/projects*`, and `/api/v1/admin/meta*`.
 - `x-api-key` is required for feedback and admin-feedback routes.
 - API keys are tied to a single project.
 - Admin API keys can use both project routes and admin routes for their project.
@@ -171,6 +176,8 @@ docker pull ghcr.io/digital-metabolic-twin-centre/feedback:latest
 ```
 
 ## Bootstrap Setup
+
+Bootstrap setup does not require an existing `x-api-key`. For first-time setup, use only `x-bootstrap-token` to create the first project and/or admin API key.
 
 Create an admin API key:
 
