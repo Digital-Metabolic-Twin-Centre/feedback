@@ -7,8 +7,8 @@ workspace "DMTC  Headless Feedback" "Architecture diagrams for the feedback mana
 
         gitHubActions = softwareSystem "GitHub Actions" "Builds, tests, and publishes tagged multi-architecture Docker images."
         gitHubContainerRegistry = softwareSystem "GitHub Container Registry" "Stores published Docker images for deployment."
-        gitLab = softwareSystem "GitLab" "Receives promoted feedback as issues and follow-up updates."
-        smtpProvider = softwareSystem "SMTP Provider" "Delivers notification emails when admins reply to feedback."
+        gitLab = softwareSystem "GitLab / GitHub" "Receives promoted feedback as issues and follow-up updates."
+        smtpProvider = softwareSystem "SMTP Provider / Resend" "Delivers notification emails when admins reply to feedback."
 
         feedbackApi = softwareSystem "DMTC Feedback API" "Next.js-based headless feedback management backend." {
             
