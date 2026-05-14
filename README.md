@@ -116,7 +116,7 @@ Optional mail configuration:
 
 ```env
 FEEDBACK_DISTRIBUTION_EMAILS=ops@example.com,product@example.com
-FEEDBACK_EMAIL_COOLDOWN_HOURS=4
+FEEDBACK_EMAIL_COOLDOWN_HOURS=0
 
 # SMTP delivery
 MAIL_PROVIDER=smtp

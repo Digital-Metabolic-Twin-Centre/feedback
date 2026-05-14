@@ -3,7 +3,7 @@ import { Resend } from "resend";
 import { recordNotificationAudit, getRecentlyNotified } from "@/lib/feedback/sqlite-queries";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
-const DEFAULT_FEEDBACK_EMAIL_COOLDOWN_HOURS = 4;
+const DEFAULT_FEEDBACK_EMAIL_COOLDOWN_HOURS = 0;
 
 function redactEmail(email: string): string {
   const normalized = email.trim().toLowerCase();
@@ -44,7 +44,7 @@ function escapeHtml(value: string): string {
 function getFeedbackEmailCooldownHours(): number {
   const raw = (process.env.FEEDBACK_EMAIL_COOLDOWN_HOURS ?? "").trim();
   const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_FEEDBACK_EMAIL_COOLDOWN_HOURS;
+  if (!Number.isFinite(parsed) || parsed < 0) return DEFAULT_FEEDBACK_EMAIL_COOLDOWN_HOURS;
   return Math.min(Math.floor(parsed), 168);
 }
 
@@ -72,14 +72,18 @@ async function sendEmailToRecipients(input: {
   const cooldownHours = getFeedbackEmailCooldownHours();
 
   // Cooldown guard: one feedback notification email per recipient within configured hours.
-  const recentlyNotified = getRecentlyNotified(
-    normalizedRecipients,
-    "feedback_%:%",
-    cooldownHours
-  );
+  const recentlyNotified =
+    cooldownHours > 0
+      ? getRecentlyNotified(
+          normalizedRecipients,
+          "feedback_%:%",
+          cooldownHours
+        )
+      : new Set<string>();
+
   const eligibleRecipients = normalizedRecipients.filter((r) => !recentlyNotified.has(r));
 
-  if (eligibleRecipients.length === 0) {
+  if (cooldownHours > 0 && eligibleRecipients.length === 0) {
     console.info(`[${context}] Skipped: all recipients notified in the last ${cooldownHours} hours.`);
     return;
   }

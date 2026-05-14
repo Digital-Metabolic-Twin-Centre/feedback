@@ -27,7 +27,7 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().min(1).optional(),
 
   FEEDBACK_DISTRIBUTION_EMAILS: z.string().optional(),
-  FEEDBACK_EMAIL_COOLDOWN_HOURS: z.coerce.number().int().min(0).max(168).default(4),
+  FEEDBACK_EMAIL_COOLDOWN_HOURS: z.coerce.number().int().min(0).max(168).default(0),
 });
 
 const isBuildPhase =
