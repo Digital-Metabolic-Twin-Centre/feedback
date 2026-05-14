@@ -46,6 +46,7 @@ GitHub Actions are split into two workflows:
   - `lint`
   - `test`
   - `build-validation`
+  - `docker-build-validation` on pushes to `main` only, which builds the release image without publishing it
 
 - `.github/workflows/release.yml`
   runs only on tag pushes matching `v*`

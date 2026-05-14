@@ -208,19 +208,20 @@ function applySchema(db: Database.Database) {
   ensureOrderColumn(db, "feedback_messages");
   ensureOrderColumn(db, "notification_audit");
 
+  // Build-time module evaluation can happen in multiple worker processes.
+  // Use an idempotent insert so concurrent schema/bootstrap runs do not race.
+  db.prepare(`INSERT OR IGNORE INTO projects (slug, name) VALUES (?, ?)`)
+    .run("default", "Default Project");
+
   const defaultProject = db
-    .prepare(`SELECT id FROM projects WHERE slug = ? LIMIT 1`)
+    .prepare(`SELECT id FROM projects WHERE LOWER(TRIM(slug)) = LOWER(TRIM(?)) LIMIT 1`)
     .get("default") as { id: number } | undefined;
 
-  let defaultProjectId = defaultProject?.id;
-  if (!defaultProjectId) {
-    const inserted = db
-      .prepare(`INSERT INTO projects (slug, name) VALUES (?, ?) RETURNING id`)
-      .get("default", "Default Project") as { id: number };
-    defaultProjectId = inserted.id;
+  if (!defaultProject?.id) {
+    throw new Error("Failed to ensure the default project exists.");
   }
 
-  db.prepare(`UPDATE feedback SET project_id = ? WHERE project_id IS NULL`).run(defaultProjectId);
+  db.prepare(`UPDATE feedback SET project_id = ? WHERE project_id IS NULL`).run(defaultProject.id);
 }
 
 function ensureOrderColumn(db: Database.Database, tableName: string) {
