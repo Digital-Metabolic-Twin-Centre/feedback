@@ -41,12 +41,16 @@ npm run clean
 GitHub Actions are split into two workflows:
 
 - `.github/workflows/ci.yml`
-  runs on branch pushes and pull requests
+  runs on pushes to `main` and tag pushes matching `v*`
   includes:
   - `lint`
   - `test`
   - `build-validation`
-  - `docker-build-validation` on pushes to `main` only, which builds the release image without publishing it
+
+- `.github/workflows/docker-validation.yml`
+  runs on pushes to `main` only
+  includes:
+  - `docker-build-validation`, which builds the release image without publishing it
 
 - `.github/workflows/release.yml`
   runs only on tag pushes matching `v*`
@@ -54,7 +58,8 @@ GitHub Actions are split into two workflows:
 
 When changing CI:
 
-- keep branch/PR validation in `ci.yml`
+- keep `main` and tag validation in `ci.yml`
+- keep main-branch Docker validation in `docker-validation.yml`
 - keep tag-based image publishing in `release.yml`
 - do not reintroduce duplicate lint/build workflows
 
