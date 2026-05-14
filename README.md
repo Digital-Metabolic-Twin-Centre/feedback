@@ -117,6 +117,7 @@ Optional mail configuration:
 ```env
 FEEDBACK_DISTRIBUTION_EMAILS=ops@example.com,product@example.com
 FEEDBACK_EMAIL_COOLDOWN_HOURS=0
+FEEDBACK_EMAIL_URL_TEMPLATE=https://your-site.example/feedback?feedbackId={feedbackId}
 
 # SMTP delivery
 MAIL_PROVIDER=smtp
@@ -131,6 +132,22 @@ MAIL_PROVIDER=resend
 RESEND_API_KEY=re_...
 SMTP_FROM=feedback@example.com
 ```
+
+If `FEEDBACK_EMAIL_URL_TEMPLATE` is set, notification emails use that exact URL pattern and replace `{feedbackId}` with the numeric feedback id. This is useful when email recipients should land on your own site rather than the API route.
+
+Example:
+
+```env
+FEEDBACK_EMAIL_URL_TEMPLATE=https://your-site.example/feedback?feedbackId={feedbackId}
+```
+
+For feedback `5`, that becomes:
+
+```text
+https://your-site.example/feedback?feedbackId=5
+```
+
+Include the literal `{feedbackId}` placeholder in the template. If the placeholder is missing, the app will not append the id automatically.
 
 Optional issue-sync configuration:
 

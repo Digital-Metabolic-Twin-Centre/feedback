@@ -25,11 +25,19 @@ function parseCommaSeparatedEmails(raw: string | null | undefined): string[] {
 }
 
 function buildFeedbackUrl(feedbackId: number): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "";
+  const template = (process.env.FEEDBACK_EMAIL_URL_TEMPLATE ?? "").trim();
+  if (template) {
+    return template.replace(/\{feedbackId\}/g, String(feedbackId));
+  }
+
+  const appUrl = (
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_FEEDBACK_API_URL ||
+    ""
+  ).trim();
   const base = appUrl.endsWith("/") ? appUrl.slice(0, -1) : appUrl;
-  return base
-    ? `${base}/api/v1/admin/feedback?feedbackId=${feedbackId}`
-    : `/api/v1/admin/feedback?feedbackId=${feedbackId}`;
+  return `${base}/api/v1/admin/feedback?feedbackId=${feedbackId}`;
 }
 
 function escapeHtml(value: string): string {

@@ -8,6 +8,7 @@ const envSchema = z.object({
   NEXTAUTH_URL: z.string().url().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   NEXT_PUBLIC_FEEDBACK_API_URL: z.string().url().optional(),
+  FEEDBACK_EMAIL_URL_TEMPLATE: z.string().min(1).optional(),
 
   FEEDBACK_BOOTSTRAP_TOKEN: z.string().min(16).optional(),
 
