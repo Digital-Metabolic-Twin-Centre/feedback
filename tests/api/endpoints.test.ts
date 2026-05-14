@@ -9,6 +9,11 @@ process.env.NEXT_PUBLIC_APP_URL = "http://localhost:4001";
 process.env.NEXT_PUBLIC_FEEDBACK_API_URL = "http://localhost:4001";
 process.env.SQLITE_PATH = "./data/feedback-test.db";
 process.env.MAIL_PROVIDER = "disabled";
+delete process.env.GITLAB_ISSUES_REPORTING_TOKEN;
+delete process.env.GITLAB_REPORTING_PROJECT_ID;
+delete process.env.GITHUB_ISSUES_REPORTING_TOKEN;
+delete process.env.GITHUB_REPORTING_OWNER;
+delete process.env.GITHUB_REPORTING_REPO;
 
 const DB_FILE = path.resolve(process.cwd(), process.env.SQLITE_PATH as string);
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { insertFeedback, insertThreadMessage, selectfeedback } from "@/lib/feedback/sqlite-queries";
 import { notifyfeedbackubmitted } from "@/lib/feedback-notifications";
 import { authenticateApiKey, requireAdmin, v1Json, v1PreflightResponse } from "@/lib/api-v1";
+import { PlatformSyncError, syncPromotedFeedbackToAvailablePlatforms } from "@/lib/promoted-feedback-sync";
 
 const feedbackPayloadSchema = z.object({
   email: z.string().email(),
@@ -56,6 +57,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    if (payload.promote && !payload.draft) {
+      await syncPromotedFeedbackToAvailablePlatforms(result.insertedId);
+    }
+
     if (!payload.draft) {
       notifyfeedbackubmitted({
         feedbackId: result.insertedId,
@@ -77,6 +82,20 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
+    if (error instanceof PlatformSyncError) {
+      return v1Json(
+        {
+          success: false,
+          error: error.message,
+          sync: {
+            failures: error.failures,
+            partialResults: error.partialResults,
+          },
+        },
+        { status: 502 }
+      );
+    }
+
     return v1Json(
       {
         success: false,
