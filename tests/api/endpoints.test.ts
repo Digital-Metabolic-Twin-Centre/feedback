@@ -143,6 +143,16 @@ describe("Headless API endpoints", () => {
     );
   });
 
+  test("tracked baseline migration is recorded", () => {
+    const migrations = db
+      .prepare("SELECT id FROM schema_migrations ORDER BY id ASC")
+      .all() as Array<{ id: string }>;
+
+    expect(migrations).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "0001_baseline" })]),
+    );
+  });
+
   test("openapi and docs endpoints", async () => {
     const openApiRes = await openApiRoute.GET();
     expect(openApiRes.status).toBe(200);
