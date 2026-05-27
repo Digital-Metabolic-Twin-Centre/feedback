@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import Database from "better-sqlite3";
-import { runSqliteMigrations } from "@/lib/sqlite-migrations/index.mjs";
+import { rollbackLastSqliteMigration, runSqliteMigrations } from "@/lib/sqlite-migrations/index.mjs";
 
 describe("SQLite migrations", () => {
   const dbFile = path.resolve(process.cwd(), "data/feedback-migrations-test.db");
@@ -155,12 +155,14 @@ describe("SQLite migrations", () => {
       { id: "0003_add_feedback_assigned_to" },
       { id: "0004_create_notification_settings" },
       { id: "0005_add_notification_preference_indexes" },
+      { id: "0006_add_assigned_to_default" },
     ]);
     expect(assignedToColumns).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: "name", notnull: 1 }),
         expect.objectContaining({ name: "title", notnull: 0 }),
         expect.objectContaining({ name: "email", notnull: 1 }),
+        expect.objectContaining({ name: "is_default", notnull: 1 }),
       ]),
     );
     expect(feedbackColumns.map((column) => column.name)).toEqual(
@@ -184,6 +186,79 @@ describe("SQLite migrations", () => {
     expect(legacyFeedback.project_id).toBe(defaultProject?.id);
     expect(legacyFeedback.github_issue_id).toBeNull();
     expect(legacyFeedback.github_issue_url).toBeNull();
+
+    db.close();
+  });
+
+  test("rolls back one migration at a time", () => {
+    fs.mkdirSync(path.dirname(dbFile), { recursive: true });
+
+    const db = new Database(dbFile);
+    runSqliteMigrations(db, { logger: null });
+
+    expect(
+      db.prepare("SELECT id FROM schema_migrations ORDER BY id ASC").all() as Array<{ id: string }>
+    ).toEqual([
+      { id: "0001_baseline" },
+      { id: "0002_create_assigned_to" },
+      { id: "0003_add_feedback_assigned_to" },
+      { id: "0004_create_notification_settings" },
+      { id: "0005_add_notification_preference_indexes" },
+      { id: "0006_add_assigned_to_default" },
+    ]);
+
+    expect(rollbackLastSqliteMigration(db, { logger: null })).toBe("0006_add_assigned_to_default");
+    expect(
+      db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?").get(
+        "idx_assigned_to_single_default",
+      )
+    ).toBeUndefined();
+    expect(
+      db.prepare("PRAGMA table_info(assigned_to)").all() as Array<{ name: string }>
+    ).not.toEqual(expect.arrayContaining([expect.objectContaining({ name: "is_default" })]));
+    expect(
+      db.prepare("SELECT id FROM schema_migrations ORDER BY id ASC").all() as Array<{ id: string }>
+    ).toEqual([
+      { id: "0001_baseline" },
+      { id: "0002_create_assigned_to" },
+      { id: "0003_add_feedback_assigned_to" },
+      { id: "0004_create_notification_settings" },
+      { id: "0005_add_notification_preference_indexes" },
+    ]);
+
+    expect(rollbackLastSqliteMigration(db, { logger: null })).toBe("0005_add_notification_preference_indexes");
+    expect(
+      db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?").get(
+        "idx_notification_preferences_enabled",
+      )
+    ).toBeUndefined();
+    expect(
+      db.prepare("SELECT id FROM schema_migrations ORDER BY id ASC").all() as Array<{ id: string }>
+    ).toEqual([
+      { id: "0001_baseline" },
+      { id: "0002_create_assigned_to" },
+      { id: "0003_add_feedback_assigned_to" },
+      { id: "0004_create_notification_settings" },
+    ]);
+
+    expect(rollbackLastSqliteMigration(db, { logger: null })).toBe("0004_create_notification_settings");
+    expect(
+      db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?").get(
+        "notification_settings",
+      )
+    ).toBeUndefined();
+    expect(
+      db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?").get(
+        "notification_preferences",
+      )
+    ).toBeUndefined();
+    expect(
+      db.prepare("SELECT id FROM schema_migrations ORDER BY id ASC").all() as Array<{ id: string }>
+    ).toEqual([
+      { id: "0001_baseline" },
+      { id: "0002_create_assigned_to" },
+      { id: "0003_add_feedback_assigned_to" },
+    ]);
 
     db.close();
   });

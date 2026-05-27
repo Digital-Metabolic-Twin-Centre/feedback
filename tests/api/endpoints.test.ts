@@ -159,11 +159,12 @@ describe("Headless API endpoints", () => {
         expect.objectContaining({ id: "0003_add_feedback_assigned_to" }),
         expect.objectContaining({ id: "0004_create_notification_settings" }),
         expect.objectContaining({ id: "0005_add_notification_preference_indexes" }),
+        expect.objectContaining({ id: "0006_add_assigned_to_default" }),
       ]),
     );
   });
 
-  test("assigned_to table exists with nullable title", () => {
+  test("assigned_to table exists with nullable title and default flag", () => {
     const columns = db.prepare("PRAGMA table_info(assigned_to)").all() as Array<{
       name: string;
       notnull: number;
@@ -174,6 +175,7 @@ describe("Headless API endpoints", () => {
         expect.objectContaining({ name: "name", notnull: 1 }),
         expect.objectContaining({ name: "title", notnull: 0 }),
         expect.objectContaining({ name: "email", notnull: 1 }),
+        expect.objectContaining({ name: "is_default", notnull: 1 }),
       ]),
     );
   });
@@ -440,8 +442,10 @@ describe("Headless API endpoints", () => {
       id: number;
       title: string | null;
       email: string;
+      isDefault: boolean;
     };
     expect(createdAssignedTo.title).toBe("Support Lead");
+    expect(createdAssignedTo.isDefault).toBe(false);
 
     const getAssignedToRes = await adminMetaByIdRoute.GET(
       req(`http://localhost/api/v1/admin/meta/assigned_to/${createdAssignedTo.id}`, { headers }),
@@ -461,6 +465,39 @@ describe("Headless API endpoints", () => {
     const updateAssignedToJson = await readJson(updateAssignedToRes);
     expect((updateAssignedToJson.data as { title: string | null }).title).toBeNull();
     expect((updateAssignedToJson.data as { email: string }).email).toBe("alex.updated@example.com");
+
+    const createDefaultAssignedToRes = await adminMetaRoute.POST(
+      req("http://localhost/api/v1/admin/meta/assigned_to", {
+        method: "POST",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ name: "Default Owner", email: "default@example.com", isDefault: true }),
+      }),
+      { params: Promise.resolve({ resource: "assigned_to" }) }
+    );
+    expect(createDefaultAssignedToRes.status).toBe(201);
+    const createDefaultAssignedToJson = await readJson(createDefaultAssignedToRes);
+    const defaultAssignedTo = createDefaultAssignedToJson.data as { id: number; isDefault: boolean };
+    expect(defaultAssignedTo.isDefault).toBe(true);
+
+    const promoteAssignedToRes = await adminMetaByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/meta/assigned_to/${createdAssignedTo.id}`, {
+        method: "PATCH",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ isDefault: true }),
+      }),
+      { params: Promise.resolve({ resource: "assigned_to", id: String(createdAssignedTo.id) }) }
+    );
+    expect(promoteAssignedToRes.status).toBe(200);
+    const promoteAssignedToJson = await readJson(promoteAssignedToRes);
+    expect((promoteAssignedToJson.data as { isDefault: boolean }).isDefault).toBe(true);
+
+    const previousDefaultRes = await adminMetaByIdRoute.GET(
+      req(`http://localhost/api/v1/admin/meta/assigned_to/${defaultAssignedTo.id}`, { headers }),
+      { params: Promise.resolve({ resource: "assigned_to", id: String(defaultAssignedTo.id) }) }
+    );
+    expect(previousDefaultRes.status).toBe(200);
+    const previousDefaultJson = await readJson(previousDefaultRes);
+    expect((previousDefaultJson.data as { isDefault: boolean }).isDefault).toBe(false);
 
     const deleteAssignedToRes = await adminMetaByIdRoute.DELETE(
       req(`http://localhost/api/v1/admin/meta/assigned_to/${createdAssignedTo.id}`, {
@@ -1044,6 +1081,46 @@ describe("Headless API endpoints", () => {
     expect(detailRes.status).toBe(200);
     const detailJson = await readJson(detailRes);
     expect((detailJson.data as { assigned_to: number | null }).assigned_to).toBeNull();
+  });
+
+  test("feedback submission uses the default assignee when assigned_to is omitted", async () => {
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO assigned_to (id, name, title, email, is_default, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(1, "Default Queue", "Support", "default.queue@example.com", 1, now, now);
+
+    const createRes = await feedbackRoute.POST(
+      req("http://localhost/api/v1/feedback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": userApiKey,
+        },
+        body: JSON.stringify({
+          email: "default-assignee@example.com",
+          organisation: 1,
+          feedback_type: 1,
+          feedback_status: 1,
+          page: "/default-assignee",
+          initial_message: "This should use the default assignee.",
+        }),
+      }),
+    );
+    expect(createRes.status).toBe(201);
+    const created = await readJson(createRes);
+    const feedbackId = created.id as number;
+
+    const detailRes = await adminFeedbackByIdRoute.GET(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        headers: { "x-api-key": adminApiKey },
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) },
+    );
+    expect(detailRes.status).toBe(200);
+    const detailJson = await readJson(detailRes);
+    expect((detailJson.data as { assigned_to: number | null }).assigned_to).toBe(1);
+    expect((detailJson.data as { assigned_to_name: string | null }).assigned_to_name).toBe("Default Queue");
   });
 
   test("promote and draft actions accept boolean-like strings", async () => {

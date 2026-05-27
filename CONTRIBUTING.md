@@ -17,7 +17,7 @@ Install dependencies and start from a seeded local database:
 
 ```bash
 npm ci
-npm run migrate:sqlite-seed
+npm run migrate:up-seed
 npm run dev
 ```
 
@@ -98,18 +98,19 @@ When changing schema:
 3. Use `CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, and `PRAGMA table_info(...)` checks where needed.
 4. Backfill old rows immediately with a safe default.
 5. Keep reads/writes compatible with both pre- and post-migration code during rollout.
-6. Let [scripts/migrate-sqlite.mjs](./scripts/migrate-sqlite.mjs) or app startup apply it.
+6. Implement both `up(db)` and `down(db)` so `npm run migrate:down` can reverse one step cleanly.
+7. Let [scripts/migrate-sqlite.mjs](./scripts/migrate-sqlite.mjs) or app startup apply it.
 
 To generate the next numbered migration scaffold automatically:
 
 ```bash
-npm run migration:create -- add-feedback-priority
+npm run migrate:create -- add-feedback-priority
 ```
 
 If you want to discard a generated migration before commit:
 
 ```bash
-npm run migration:remove -- add-feedback-priority
+npm run migrate:remove -- add-feedback-priority
 ```
 
 Example pattern:

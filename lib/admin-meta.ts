@@ -34,6 +34,7 @@ const assignedToPayloadSchema = z.object({
   name: z.string().min(1).optional(),
   title: z.string().nullable().optional(),
   email: z.string().email().optional(),
+  isDefault: booleanLike.optional(),
 });
 
 const notificationSettingsPayloadSchema = z.object({
@@ -95,9 +96,27 @@ type AssignedToSummary = {
   name: string;
   title: string | null;
   email: string;
+  isDefault: boolean;
   createdAt: string;
   updatedAt: string;
 };
+
+function clearDefaultAssignedTo(excludeId?: number) {
+  if (excludeId !== undefined) {
+    db.prepare(`
+      UPDATE assigned_to
+      SET is_default = 0, updated_at = ?
+      WHERE is_default = 1 AND id != ?
+    `).run(new Date().toISOString(), excludeId);
+    return;
+  }
+
+  db.prepare(`
+    UPDATE assigned_to
+    SET is_default = 0, updated_at = ?
+    WHERE is_default = 1
+  `).run(new Date().toISOString());
+}
 
 type NotificationSettingsSummary = {
   id: number;
@@ -131,6 +150,7 @@ function getAssignedToById(id: number): AssignedToSummary | null {
   const row = db
     .prepare(
       `SELECT id, name, title, email, created_at, updated_at
+             , is_default
        FROM assigned_to
        WHERE id = ?
        LIMIT 1`
@@ -140,6 +160,7 @@ function getAssignedToById(id: number): AssignedToSummary | null {
       name: string;
       title: string | null;
       email: string;
+      is_default: number;
       created_at: string;
       updated_at: string;
     } | undefined;
@@ -151,6 +172,7 @@ function getAssignedToById(id: number): AssignedToSummary | null {
     name: row.name,
     title: row.title,
     email: row.email,
+    isDefault: Boolean(row.is_default),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -159,7 +181,7 @@ function getAssignedToById(id: number): AssignedToSummary | null {
 function listAssignedTo(): AssignedToSummary[] {
   const rows = db
     .prepare(
-      `SELECT id, name, title, email, created_at, updated_at
+      `SELECT id, name, title, email, is_default, created_at, updated_at
        FROM assigned_to
        ORDER BY LOWER(TRIM(name)) ASC, id ASC`
     )
@@ -168,6 +190,7 @@ function listAssignedTo(): AssignedToSummary[] {
       name: string;
       title: string | null;
       email: string;
+      is_default: number;
       created_at: string;
       updated_at: string;
     }>;
@@ -177,6 +200,7 @@ function listAssignedTo(): AssignedToSummary[] {
     name: row.name,
     title: row.title,
     email: row.email,
+    isDefault: Boolean(row.is_default),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }));
@@ -189,19 +213,26 @@ function createAssignedTo(payload: unknown): AssignedToSummary {
   }
 
   const now = new Date().toISOString();
-  const row = db
-    .prepare(
-      `INSERT INTO assigned_to (name, title, email, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?)
-       RETURNING id`
-    )
-    .get(
-      parsed.data.name.trim(),
-      parsed.data.title?.trim() || null,
-      parsed.data.email.trim().toLowerCase(),
-      now,
-      now
-    ) as { id: number };
+  const row = db.transaction(() => {
+    if (parsed.data.isDefault) {
+      clearDefaultAssignedTo();
+    }
+
+    return db
+      .prepare(
+        `INSERT INTO assigned_to (name, title, email, is_default, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)
+         RETURNING id`
+      )
+      .get(
+        parsed.data.name.trim(),
+        parsed.data.title?.trim() || null,
+        parsed.data.email.trim().toLowerCase(),
+        parsed.data.isDefault ? 1 : 0,
+        now,
+        now
+      ) as { id: number };
+  })();
 
   const created = getAssignedToById(row.id);
   if (!created) {
@@ -237,6 +268,11 @@ function updateAssignedToById(id: number, payload: unknown): AssignedToSummary |
     params.push(parsed.data.email.trim().toLowerCase());
   }
 
+  if (parsed.data.isDefault !== undefined) {
+    updates.push("is_default = ?");
+    params.push(parsed.data.isDefault ? 1 : 0);
+  }
+
   if (!updates.length) {
     throw new Error("At least one updatable field is required.");
   }
@@ -244,9 +280,15 @@ function updateAssignedToById(id: number, payload: unknown): AssignedToSummary |
   updates.push("updated_at = ?");
   params.push(new Date().toISOString(), id);
 
-  const result = db
-    .prepare(`UPDATE assigned_to SET ${updates.join(", ")} WHERE id = ?`)
-    .run(...params);
+  const result = db.transaction(() => {
+    if (parsed.data.isDefault) {
+      clearDefaultAssignedTo(id);
+    }
+
+    return db
+      .prepare(`UPDATE assigned_to SET ${updates.join(", ")} WHERE id = ?`)
+      .run(...params);
+  })();
 
   if (result.changes < 1) {
     return null;

@@ -113,6 +113,10 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
             name: { type: "string" },
             title: { type: "string", nullable: true },
             email: { type: "string", format: "email" },
+            isDefault: {
+              type: "boolean",
+              description: "Whether this assignee should be used by default when feedback is submitted without an explicit assignee.",
+            },
           },
         },
         NotificationSettingsPayload: {

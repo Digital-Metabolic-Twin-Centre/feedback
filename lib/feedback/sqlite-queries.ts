@@ -90,6 +90,14 @@ export function assignedToExists(id: number): boolean {
   return Boolean(row);
 }
 
+function getDefaultAssignedToId(): number | null {
+  const row = db
+    .prepare(`SELECT id FROM assigned_to WHERE is_default = 1 LIMIT 1`)
+    .get() as { id: number } | undefined;
+
+  return row?.id ?? null;
+}
+
 export function areFeedbackNotificationsGloballyEnabled(): boolean {
   const row = db
     .prepare(`
@@ -339,10 +347,15 @@ export function insertFeedback(data: InsertFeedbackInput): { insertedId: number 
   const now = new Date().toISOString();
   const email = typeof data.email === "string" ? data.email.trim().toLowerCase() : "";
   const submitter_ref = deriveSubmitterRef(email);
+  const defaultAssignedToId = getDefaultAssignedToId();
   const defaultProject = db
     .prepare(`SELECT id FROM projects WHERE slug = 'default' LIMIT 1`)
     .get() as { id: number } | undefined;
   const projectId = data.project_id ?? defaultProject?.id ?? null;
+  const assignedToId =
+    typeof data.assigned_to === "number" || data.assigned_to === null
+      ? data.assigned_to
+      : defaultAssignedToId;
 
   // Resolve status to "Open" by default if not provided
   let feedbacktatus = data.feedback_status ?? null;
@@ -356,15 +369,16 @@ export function insertFeedback(data: InsertFeedbackInput): { insertedId: number 
   const result = db
     .prepare(
       `INSERT INTO feedback
-         (project_id, email, submitter_ref, organisation, page, initial_message, feedback_type, feedback_status,
+         (project_id, email, submitter_ref, assigned_to, organisation, page, initial_message, feedback_type, feedback_status,
           promote, draft, created_by, created_at, updated_by, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        RETURNING id`
     )
     .get(
       projectId,
       email,
       submitter_ref,
+      assignedToId,
       data.organisation ?? null,
       data.page ?? null,
       data.initial_message ?? null,

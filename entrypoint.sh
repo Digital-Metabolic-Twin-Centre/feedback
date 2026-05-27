@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "Starting migrations..."
-npm run migrate:sqlite
+npm run migrate:up
 
 if [ $? -ne 0 ]; then
   echo "Migration failed. Exiting."

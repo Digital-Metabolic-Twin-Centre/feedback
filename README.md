@@ -176,7 +176,7 @@ GITHUB_ISSUES_REPORTING_TOKEN=github_pat_...
 
 ```bash
 npm ci
-npm run migrate:sqlite-seed
+npm run migrate:up-seed
 npm run dev
 ```
 
@@ -240,25 +240,32 @@ To add a future schema change:
 
 1. Create a new numbered migration file in `lib/sqlite-migrations/`.
 2. Keep it additive where possible.
-3. Run `npm run migrate:sqlite`.
+3. Run `npm run migrate:up`.
 4. Add or update tests covering the new shape.
+5. Add both `up(db)` and `down(db)` so it can be rolled back one step at a time.
 
 You can generate the next numbered migration file automatically with:
 
 ```bash
-npm run migration:create -- add-feedback-priority
+npm run migrate:create -- add-feedback-priority
+```
+
+To roll back exactly one applied migrate:
+
+```bash
+npm run migrate:down
 ```
 
 If you change your mind before commit, you can remove a generated migration by name or filename:
 
 ```bash
-npm run migration:remove -- add-feedback-priority
+npm run migrate:remove -- add-feedback-priority
 ```
 
 If you want a pinned release instead of `latest`, use a version tag such as:
 
 ```bash
-docker pull ghcr.io/digital-metabolic-twin-centre/feedback:v0.6.0
+docker pull ghcr.io/digital-metabolic-twin-centre/feedback:latest
 ```
 
 ## Bootstrap Setup
