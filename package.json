@@ -13,6 +13,7 @@
     "migration:create": "node scripts/create-sqlite-migration.mjs",
     "migration:remove": "node scripts/remove-sqlite-migration.mjs",
     "test": "jest --runInBand",
+    "test:coverage": "jest --coverage --runInBand",
     "test:watch": "jest --watch"
   },
   "dependencies": {
