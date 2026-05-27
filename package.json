@@ -138,7 +138,7 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "ts-jest": "^29.4.6",
-    "ts-node": "^1.7.1",
+    "ts-node": "^1.7.3",
     "tsup": "^8.5.1"
   },
   "overrides": {
