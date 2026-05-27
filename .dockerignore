@@ -46,6 +46,9 @@ app/uploads
 uploads
 data/uploads
 app/data/uploads
+data/*.db
+data/*.db-shm
+data/*.db-wal
 
 # Platform specific
 .vercel

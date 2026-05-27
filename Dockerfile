@@ -35,7 +35,7 @@ RUN rm -rf .next
 ENV NEXTAUTH_URL="http://localhost:4001"
 ENV NEXT_PUBLIC_APP_URL="http://localhost:4001"
 ENV NEXT_PUBLIC_FEEDBACK_API_URL="http://localhost:4001"
-ENV SQLITE_PATH="./data/feedback.db"
+ENV SQLITE_PATH="/tmp/feedback-build.db"
 ENV MAIL_PROVIDER="disabled"
 ENV SMTP_HOST="localhost"
 ENV SMTP_PORT="25"
@@ -71,8 +71,6 @@ COPY --from=builder /app/next.config.ts ./next.config.ts
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/lib ./lib
-COPY --from=builder /app/data ./data
-
 # Copy entrypoint
 COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
