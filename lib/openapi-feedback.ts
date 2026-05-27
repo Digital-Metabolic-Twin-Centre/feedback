@@ -117,9 +117,9 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
         },
         NotificationSettingsPayload: {
           type: "object",
-          required: ["feedbackNotificationsEnabled"],
+          required: ["feedback_notifications_enabled"],
           properties: {
-            feedbackNotificationsEnabled: {
+            feedback_notifications_enabled: {
               type: "boolean",
               description: "Enable or disable feedback notification delivery for the entire site.",
             },
@@ -127,14 +127,14 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
         },
         NotificationPreferencePayload: {
           type: "object",
-          required: ["email", "feedbackNotificationsEnabled"],
+          required: ["email", "feedback_notifications_enabled"],
           properties: {
             email: {
               type: "string",
               format: "email",
               description: "Target email address for a per-user feedback notification preference.",
             },
-            feedbackNotificationsEnabled: {
+            feedback_notifications_enabled: {
               type: "boolean",
               description: "Whether this email address should receive feedback notifications.",
             },

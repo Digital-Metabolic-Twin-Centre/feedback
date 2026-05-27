@@ -477,12 +477,12 @@ curl "http://localhost:4001/api/v1/admin/meta/notification_settings" \
 curl -X PATCH http://localhost:4001/api/v1/admin/meta/notification_settings/1 \
   -H "Content-Type: application/json" \
   -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN" \
-  -d '{"feedbackNotificationsEnabled":false}'
+  -d '{"feedback_notifications_enabled":false}'
 
 curl -X POST http://localhost:4001/api/v1/admin/meta/notification_preferences \
   -H "Content-Type: application/json" \
   -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN" \
-  -d '{"email":"user@example.com","feedbackNotificationsEnabled":false}'
+  -d '{"email":"user@example.com","feedback_notifications_enabled":false}'
 ```
 
 `notification_settings` controls whether feedback notifications are enabled for the entire site.

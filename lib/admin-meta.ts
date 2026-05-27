@@ -37,12 +37,12 @@ const assignedToPayloadSchema = z.object({
 });
 
 const notificationSettingsPayloadSchema = z.object({
-  feedbackNotificationsEnabled: booleanLike.optional(),
+  feedback_notifications_enabled: booleanLike.optional(),
 });
 
 const notificationPreferencePayloadSchema = z.object({
   email: z.string().email().optional(),
-  feedbackNotificationsEnabled: booleanLike.optional(),
+  feedback_notifications_enabled: booleanLike.optional(),
 });
 
 const projectPayloadSchema = z.object({
@@ -101,14 +101,14 @@ type AssignedToSummary = {
 
 type NotificationSettingsSummary = {
   id: number;
-  feedbackNotificationsEnabled: boolean;
+  feedback_notifications_enabled: boolean;
   updatedAt: string;
 };
 
 type NotificationPreferenceSummary = {
   id: number;
   email: string;
-  feedbackNotificationsEnabled: boolean;
+  feedback_notifications_enabled: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -338,21 +338,21 @@ function getNotificationSettings(): NotificationSettingsSummary {
 
     return {
       id: 1,
-      feedbackNotificationsEnabled: true,
+      feedback_notifications_enabled: true,
       updatedAt: now,
     };
   }
 
   return {
     id: row.id,
-    feedbackNotificationsEnabled: Boolean(row.feedback_notifications_enabled),
+    feedback_notifications_enabled: Boolean(row.feedback_notifications_enabled),
     updatedAt: row.updated_at,
   };
 }
 
 function updateNotificationSettings(payload: unknown): NotificationSettingsSummary {
   const parsed = notificationSettingsPayloadSchema.safeParse(payload);
-  if (!parsed.success || parsed.data.feedbackNotificationsEnabled === undefined) {
+  if (!parsed.success || parsed.data.feedback_notifications_enabled === undefined) {
     throw new Error("Invalid request payload.");
   }
 
@@ -363,7 +363,7 @@ function updateNotificationSettings(payload: unknown): NotificationSettingsSumma
     ON CONFLICT(id) DO UPDATE SET
       feedback_notifications_enabled = excluded.feedback_notifications_enabled,
       updated_at = excluded.updated_at
-  `).run(parsed.data.feedbackNotificationsEnabled ? 1 : 0, now);
+  `).run(parsed.data.feedback_notifications_enabled ? 1 : 0, now);
 
   return getNotificationSettings();
 }
@@ -386,7 +386,7 @@ function listNotificationPreferences(): NotificationPreferenceSummary[] {
   return rows.map((row) => ({
     id: row.id,
     email: row.email,
-    feedbackNotificationsEnabled: Boolean(row.feedback_notifications_enabled),
+    feedback_notifications_enabled: Boolean(row.feedback_notifications_enabled),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }));
@@ -413,7 +413,7 @@ function getNotificationPreferenceById(id: number): NotificationPreferenceSummar
   return {
     id: row.id,
     email: row.email,
-    feedbackNotificationsEnabled: Boolean(row.feedback_notifications_enabled),
+    feedback_notifications_enabled: Boolean(row.feedback_notifications_enabled),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -421,7 +421,7 @@ function getNotificationPreferenceById(id: number): NotificationPreferenceSummar
 
 function createNotificationPreference(payload: unknown): NotificationPreferenceSummary {
   const parsed = notificationPreferencePayloadSchema.safeParse(payload);
-  if (!parsed.success || !parsed.data.email?.trim() || parsed.data.feedbackNotificationsEnabled === undefined) {
+  if (!parsed.success || !parsed.data.email?.trim() || parsed.data.feedback_notifications_enabled === undefined) {
     throw new Error("Invalid request payload.");
   }
 
@@ -434,7 +434,7 @@ function createNotificationPreference(payload: unknown): NotificationPreferenceS
     `)
     .get(
       parsed.data.email.trim().toLowerCase(),
-      parsed.data.feedbackNotificationsEnabled ? 1 : 0,
+      parsed.data.feedback_notifications_enabled ? 1 : 0,
       now,
       now
     ) as { id: number };
@@ -461,9 +461,9 @@ function updateNotificationPreferenceById(id: number, payload: unknown): Notific
     params.push(parsed.data.email.trim().toLowerCase());
   }
 
-  if (parsed.data.feedbackNotificationsEnabled !== undefined) {
+  if (parsed.data.feedback_notifications_enabled !== undefined) {
     updates.push("feedback_notifications_enabled = ?");
-    params.push(parsed.data.feedbackNotificationsEnabled ? 1 : 0);
+    params.push(parsed.data.feedback_notifications_enabled ? 1 : 0);
   }
 
   if (!updates.length) {

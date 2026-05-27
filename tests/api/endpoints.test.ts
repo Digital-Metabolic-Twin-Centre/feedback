@@ -260,14 +260,14 @@ describe("Headless API endpoints", () => {
           schemas?: Record<string, { properties?: Record<string, unknown> }>;
         }
       ).schemas?.NotificationSettingsPayload?.properties
-    ).toEqual(expect.objectContaining({ feedbackNotificationsEnabled: expect.any(Object) }));
+    ).toEqual(expect.objectContaining({ feedback_notifications_enabled: expect.any(Object) }));
     expect(
       (
         spec.components as {
           schemas?: Record<string, { properties?: Record<string, unknown> }>;
         }
       ).schemas?.NotificationPreferencePayload?.properties
-    ).toEqual(expect.objectContaining({ email: expect.any(Object), feedbackNotificationsEnabled: expect.any(Object) }));
+    ).toEqual(expect.objectContaining({ email: expect.any(Object), feedback_notifications_enabled: expect.any(Object) }));
     expect(
       (
         spec.components as {
@@ -509,27 +509,27 @@ describe("Headless API endpoints", () => {
     expect(notificationSettingsRes.status).toBe(200);
     const notificationSettingsJson = await readJson(notificationSettingsRes);
     expect(Array.isArray(notificationSettingsJson.data)).toBe(true);
-    expect((notificationSettingsJson.data as Array<{ feedbackNotificationsEnabled: boolean }>)[0]?.feedbackNotificationsEnabled)
+    expect((notificationSettingsJson.data as Array<{ feedback_notifications_enabled: boolean }>)[0]?.feedback_notifications_enabled)
       .toBe(true);
 
     const updateNotificationSettingsRes = await adminMetaByIdRoute.PATCH(
       req("http://localhost/api/v1/admin/meta/notification_settings/1", {
         method: "PATCH",
         headers: { ...headers, "content-type": "application/json" },
-        body: JSON.stringify({ feedbackNotificationsEnabled: false }),
+        body: JSON.stringify({ feedback_notifications_enabled: false }),
       }),
       { params: Promise.resolve({ resource: "notification_settings", id: "1" }) }
     );
     expect(updateNotificationSettingsRes.status).toBe(200);
     const updateNotificationSettingsJson = await readJson(updateNotificationSettingsRes);
-    expect((updateNotificationSettingsJson.data as { feedbackNotificationsEnabled: boolean }).feedbackNotificationsEnabled)
+    expect((updateNotificationSettingsJson.data as { feedback_notifications_enabled: boolean }).feedback_notifications_enabled)
       .toBe(false);
 
     const createNotificationPreferenceRes = await adminMetaRoute.POST(
       req("http://localhost/api/v1/admin/meta/notification_preferences", {
         method: "POST",
         headers: { ...headers, "content-type": "application/json" },
-        body: JSON.stringify({ email: "muted@example.com", feedbackNotificationsEnabled: false }),
+        body: JSON.stringify({ email: "muted@example.com", feedback_notifications_enabled: false }),
       }),
       { params: Promise.resolve({ resource: "notification_preferences" }) }
     );
@@ -538,22 +538,22 @@ describe("Headless API endpoints", () => {
     const createdNotificationPreference = createNotificationPreferenceJson.data as {
       id: number;
       email: string;
-      feedbackNotificationsEnabled: boolean;
+      feedback_notifications_enabled: boolean;
     };
     expect(createdNotificationPreference.email).toBe("muted@example.com");
-    expect(createdNotificationPreference.feedbackNotificationsEnabled).toBe(false);
+    expect(createdNotificationPreference.feedback_notifications_enabled).toBe(false);
 
     const updateNotificationPreferenceRes = await adminMetaByIdRoute.PATCH(
       req(`http://localhost/api/v1/admin/meta/notification_preferences/${createdNotificationPreference.id}`, {
         method: "PATCH",
         headers: { ...headers, "content-type": "application/json" },
-        body: JSON.stringify({ feedbackNotificationsEnabled: true }),
+        body: JSON.stringify({ feedback_notifications_enabled: true }),
       }),
       { params: Promise.resolve({ resource: "notification_preferences", id: String(createdNotificationPreference.id) }) }
     );
     expect(updateNotificationPreferenceRes.status).toBe(200);
     const updateNotificationPreferenceJson = await readJson(updateNotificationPreferenceRes);
-    expect((updateNotificationPreferenceJson.data as { feedbackNotificationsEnabled: boolean }).feedbackNotificationsEnabled)
+    expect((updateNotificationPreferenceJson.data as { feedback_notifications_enabled: boolean }).feedback_notifications_enabled)
       .toBe(true);
 
     const createProjectRes = await adminMetaRoute.POST(
