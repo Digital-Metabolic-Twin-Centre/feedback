@@ -3,16 +3,20 @@
  * SQLite migration script for the feedback database.
  *
  * Usage:
- *   npm run migrate:sqlite           # create / migrate (non-destructive)
- *   npm run migrate:sqlite -- --seed # also (re-)seed reference data
- *   npm run migrate:sqlite -- --fresh # drop all tables, recreate, and seed
+ *   npm run migrate:up           # create / migrate (non-destructive)
+ *   npm run migrate:up -- --seed # also (re-)seed reference data
+ *   npm run migrate:up -- --fresh # drop all tables, recreate, and seed
  */
 
 import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
-import { runSqliteMigrations, seedSqliteReferenceData } from "../lib/sqlite-migrations/index.mjs";
+import {
+  rollbackLastSqliteMigration,
+  runSqliteMigrations,
+  seedSqliteReferenceData,
+} from "../lib/sqlite-migrations/index.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -26,11 +30,13 @@ const DB_PATH = path.resolve(
 const args = process.argv.slice(2);
 const FRESH = args.includes("--fresh");
 const SEED = args.includes("--seed") || FRESH;
+const ROLLBACK = args.includes("--rollback");
 
 console.log(`\n  SQLite feedback database migration`);
 console.log(`    Path  : ${DB_PATH}`);
 console.log(`    Fresh : ${FRESH}`);
 console.log(`    Seed  : ${SEED}\n`);
+console.log(`    Rollback: ${ROLLBACK}\n`);
 
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
@@ -56,12 +62,18 @@ if (FRESH) {
   `);
 }
 
-console.log("Applying migrations...");
-runSqliteMigrations(db);
-console.log("Migrations applied.");
+if (ROLLBACK) {
+  console.log("Rolling back one migration...");
+  const rolledBack = rollbackLastSqliteMigration(db);
+  console.log(rolledBack ? `Rolled back: ${rolledBack}` : "Nothing to roll back.");
+} else {
+  console.log("Applying migrations...");
+  runSqliteMigrations(db);
+  console.log("Migrations applied.");
+}
 
 // Seed reference data
-if (SEED) {
+if (!ROLLBACK && SEED) {
   console.log("\n Seeding reference data...");
   seedSqliteReferenceData(db);
   console.log("Seed complete.");

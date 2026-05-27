@@ -55,7 +55,7 @@ function removeFromIndexFile(fileName) {
 const rawName = process.argv.slice(2).join(" ").trim();
 
 if (!rawName) {
-  console.error("Usage: npm run migration:remove -- <migration-name-or-file>");
+  console.error("Usage: npm run migrate:remove -- <migration-name-or-file>");
   process.exit(1);
 }
 
@@ -69,4 +69,4 @@ if (!fileName) {
 removeFromIndexFile(fileName);
 fs.unlinkSync(path.join(MIGRATIONS_DIR, fileName));
 
-console.log(`Removed migration: lib/sqlite-migrations/${fileName}`);
+console.log(`Removed migrate: lib/sqlite-migrations/${fileName}`);

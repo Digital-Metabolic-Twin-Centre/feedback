@@ -71,7 +71,7 @@ function updateIndexFile(fileName, identifier) {
 const rawName = process.argv.slice(2).join(" ").trim();
 
 if (!rawName) {
-  console.error("Usage: npm run migration:create -- <migration-name>");
+  console.error("Usage: npm run migrate:create -- <migration-name>");
   process.exit(1);
 }
 
@@ -109,4 +109,4 @@ export default ${identifier};
 fs.writeFileSync(filePath, fileContents);
 updateIndexFile(fileName, identifier);
 
-console.log(`Created migration: lib/sqlite-migrations/${fileName}`);
+console.log(`Created migrate: lib/sqlite-migrations/${fileName}`);

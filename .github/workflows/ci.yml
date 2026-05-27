@@ -44,7 +44,7 @@ jobs:
         run: npm ci
 
       - name: Run SQLite migration and seed
-        run: npm run migrate:sqlite-seed
+        run: npm run migrate:up-seed
 
       - name: Run tests
         run: npm test
