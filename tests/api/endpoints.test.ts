@@ -230,17 +230,20 @@ describe("Headless API endpoints", () => {
             requestBody?: {
               content?: {
                 "application/json"?: {
-                  schema?: {
-                    properties?: {
-                      action?: { enum?: string[] };
-                    };
-                  };
+                  schema?: { $ref?: string };
                 };
               };
             };
           };
         }
-      ).patch?.requestBody?.content?.["application/json"]?.schema?.properties?.action?.enum
+      ).patch?.requestBody?.content?.["application/json"]?.schema?.$ref
+    ).toBe("#/components/schemas/AdminFeedbackActionPayload");
+    expect(
+      (
+        spec.components as {
+          schemas?: Record<string, { properties?: { action?: { enum?: string[] } } }>;
+        }
+      ).schemas?.AdminFeedbackActionPayload?.properties?.action?.enum
     ).toEqual(expect.arrayContaining(["type", "status", "assign", "promote", "draft"]));
     expect(
       (
@@ -251,6 +254,41 @@ describe("Headless API endpoints", () => {
         }
       ).get?.parameters?.find((parameter) => parameter.name === "resource")?.schema?.enum
     ).toEqual(expect.arrayContaining(["assigned_to", "notification_settings", "notification_preferences"]));
+    expect(
+      (
+        spec.components as {
+          schemas?: Record<string, { properties?: Record<string, unknown> }>;
+        }
+      ).schemas?.NotificationSettingsPayload?.properties
+    ).toEqual(expect.objectContaining({ feedbackNotificationsEnabled: expect.any(Object) }));
+    expect(
+      (
+        spec.components as {
+          schemas?: Record<string, { properties?: Record<string, unknown> }>;
+        }
+      ).schemas?.NotificationPreferencePayload?.properties
+    ).toEqual(expect.objectContaining({ email: expect.any(Object), feedbackNotificationsEnabled: expect.any(Object) }));
+    expect(
+      (
+        spec.components as {
+          schemas?: Record<string, { properties?: Record<string, unknown> }>;
+        }
+      ).schemas?.AdminFeedbackActionPayload?.properties
+    ).toEqual(expect.objectContaining({ action: expect.any(Object), value: expect.any(Object) }));
+    expect(
+      (
+        spec.components as {
+          schemas?: Record<string, { properties?: Record<string, unknown> }>;
+        }
+      ).schemas?.ReferenceMetaPayload?.properties
+    ).toEqual(expect.objectContaining({ name: expect.any(Object), order: expect.any(Object) }));
+    expect(
+      (
+        spec.components as {
+          schemas?: Record<string, { properties?: Record<string, unknown> }>;
+        }
+      ).schemas?.ApiKeyCreatePayload?.properties
+    ).toEqual(expect.objectContaining({ projectSlug: expect.any(Object), isAdmin: expect.any(Object) }));
     expect(spec.paths["/api/v1/admin/keys"].get.tags).toEqual(["Bootstrap Admin"]);
     expect(spec.paths["/api/v1/admin/meta/{resource}"].get.tags).toEqual(["Bootstrap Admin"]);
     expect(spec.paths["/api/v1/openapi.json"].get.tags).toEqual(["Documentation"]);

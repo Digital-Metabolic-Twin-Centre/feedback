@@ -60,6 +60,52 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
             promote: { type: "boolean", default: false },
           },
         },
+        FeedbackReplyPayload: {
+          type: "object",
+          required: ["message"],
+          properties: {
+            message: { type: "string" },
+            createdBy: {
+              type: "string",
+              description: "Optional reply author identifier. Defaults to the feedback email when available.",
+            },
+          },
+        },
+        AdminFeedbackActionPayload: {
+          type: "object",
+          required: ["action"],
+          properties: {
+            action: {
+              type: "string",
+              enum: ["type", "status", "assign", "close", "wontfix", "promote", "draft", "delete", "restore"],
+            },
+            value: {
+              oneOf: [{ type: "integer" }, { type: "string" }, { type: "boolean" }, { type: "null" }],
+            },
+          },
+        },
+        AdminThreadMessagePayload: {
+          type: "object",
+          required: ["message"],
+          properties: {
+            message: { type: "string" },
+            createdBy: { type: "string" },
+          },
+        },
+        ReferenceMetaPayload: {
+          type: "object",
+          required: ["name"],
+          properties: {
+            name: { type: "string" },
+            label: { type: "string", nullable: true },
+            country: { type: "string", nullable: true },
+            order: { type: "integer", minimum: 0 },
+            draft: { type: "boolean" },
+            softDelete: { type: "boolean" },
+            createdBy: { type: "string", nullable: true },
+            updatedBy: { type: "string", nullable: true },
+          },
+        },
         AssignedToPayload: {
           type: "object",
           required: ["name", "email"],
@@ -67,6 +113,76 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
             name: { type: "string" },
             title: { type: "string", nullable: true },
             email: { type: "string", format: "email" },
+          },
+        },
+        NotificationSettingsPayload: {
+          type: "object",
+          required: ["feedbackNotificationsEnabled"],
+          properties: {
+            feedbackNotificationsEnabled: {
+              type: "boolean",
+              description: "Enable or disable feedback notification delivery for the entire site.",
+            },
+          },
+        },
+        NotificationPreferencePayload: {
+          type: "object",
+          required: ["email", "feedbackNotificationsEnabled"],
+          properties: {
+            email: {
+              type: "string",
+              format: "email",
+              description: "Target email address for a per-user feedback notification preference.",
+            },
+            feedbackNotificationsEnabled: {
+              type: "boolean",
+              description: "Whether this email address should receive feedback notifications.",
+            },
+          },
+        },
+        ProjectCreatePayload: {
+          type: "object",
+          required: ["name"],
+          properties: {
+            slug: { type: "string" },
+            name: { type: "string" },
+            order: { type: "integer", minimum: 0 },
+            draft: { type: "boolean" },
+            softDelete: { type: "boolean" },
+          },
+        },
+        ApiKeyCreatePayload: {
+          type: "object",
+          properties: {
+            projectSlug: {
+              type: "string",
+              description: "Optional project slug. If omitted, the first active project is used.",
+            },
+            projectName: {
+              type: "string",
+              description: "Optional project name used only when a new project must be created.",
+            },
+            keyName: {
+              type: "string",
+              description: "Optional display name for the key.",
+            },
+            order: { type: "integer", minimum: 0 },
+            isAdmin: {
+              type: "boolean",
+              default: false,
+              description: "Whether the generated key has admin access.",
+            },
+          },
+        },
+        ApiKeyUpdatePayload: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            projectId: { type: "integer", minimum: 1 },
+            order: { type: "integer", minimum: 0 },
+            isAdmin: { type: "boolean" },
+            draft: { type: "boolean" },
+            softDelete: { type: "boolean" },
           },
         },
       },
@@ -135,17 +251,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
             required: true,
             content: {
               "application/json": {
-                schema: {
-                  type: "object",
-                  required: ["message"],
-                  properties: {
-                    message: { type: "string" },
-                    createdBy: {
-                      type: "string",
-                      description: "Optional reply author identifier. Defaults to the feedback email when available.",
-                    },
-                  },
-                },
+                schema: { $ref: "#/components/schemas/FeedbackReplyPayload" },
               },
             },
           },
@@ -226,19 +332,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
             required: true,
             content: {
               "application/json": {
-                schema: {
-                  type: "object",
-                  required: ["action"],
-                  properties: {
-                    action: {
-                      type: "string",
-                      enum: ["type", "status", "assign", "close", "wontfix", "promote", "draft", "delete", "restore"],
-                    },
-                    value: {
-                      oneOf: [{ type: "integer" }, { type: "string" }, { type: "boolean" }, { type: "null" }],
-                    },
-                  },
-                },
+                schema: { $ref: "#/components/schemas/AdminFeedbackActionPayload" },
               },
             },
           },
@@ -301,14 +395,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
             required: true,
             content: {
               "application/json": {
-                schema: {
-                  type: "object",
-                  required: ["message"],
-                  properties: {
-                    message: { type: "string" },
-                    createdBy: { type: "string" },
-                  },
-                },
+                schema: { $ref: "#/components/schemas/AdminThreadMessagePayload" },
               },
             },
           },
@@ -355,14 +442,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
             required: true,
             content: {
               "application/json": {
-                schema: {
-                  type: "object",
-                  required: ["slug", "name"],
-                  properties: {
-                    slug: { type: "string" },
-                    name: { type: "string" },
-                  },
-                },
+                schema: { $ref: "#/components/schemas/ProjectCreatePayload" },
               },
             },
           },
@@ -415,28 +495,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
             required: false,
             content: {
               "application/json": {
-                schema: {
-                  type: "object",
-                  properties: {
-                    projectSlug: {
-                      type: "string",
-                      description: "Optional project slug. If omitted, the first active project is used.",
-                    },
-                    projectName: {
-                      type: "string",
-                      description: "Optional project name used only when a new project must be created.",
-                    },
-                    keyName: {
-                      type: "string",
-                      description: "Optional display name for the key.",
-                    },
-                    isAdmin: {
-                      type: "boolean",
-                      default: false,
-                      description: "Whether the generated key has admin access.",
-                    },
-                  },
-                },
+                schema: { $ref: "#/components/schemas/ApiKeyCreatePayload" },
                 example: {
                   projectSlug: "default",
                   projectName: "Default Project",
@@ -591,7 +650,12 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
                       type: "object",
                       additionalProperties: true,
                     },
+                    { $ref: "#/components/schemas/ReferenceMetaPayload" },
                     { $ref: "#/components/schemas/AssignedToPayload" },
+                    { $ref: "#/components/schemas/NotificationSettingsPayload" },
+                    { $ref: "#/components/schemas/NotificationPreferencePayload" },
+                    { $ref: "#/components/schemas/ProjectCreatePayload" },
+                    { $ref: "#/components/schemas/ApiKeyCreatePayload" },
                   ],
                 },
               },
@@ -688,14 +752,12 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
                       type: "object",
                       additionalProperties: true,
                     },
-                    {
-                      type: "object",
-                      properties: {
-                        name: { type: "string" },
-                        title: { type: "string", nullable: true },
-                        email: { type: "string", format: "email" },
-                      },
-                    },
+                    { $ref: "#/components/schemas/ReferenceMetaPayload" },
+                    { $ref: "#/components/schemas/AssignedToPayload" },
+                    { $ref: "#/components/schemas/NotificationSettingsPayload" },
+                    { $ref: "#/components/schemas/NotificationPreferencePayload" },
+                    { $ref: "#/components/schemas/ProjectCreatePayload" },
+                    { $ref: "#/components/schemas/ApiKeyUpdatePayload" },
                   ],
                 },
               },
