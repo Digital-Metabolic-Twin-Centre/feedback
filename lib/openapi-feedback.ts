@@ -50,6 +50,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           required: ["email"],
           properties: {
             email: { type: "string", format: "email" },
+            assigned_to: { type: "integer", nullable: true },
             organisation: { type: "integer", nullable: true },
             page: { type: "string", nullable: true },
             feedback_type: { type: "integer", nullable: true },

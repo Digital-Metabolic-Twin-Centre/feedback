@@ -7,6 +7,7 @@ import { PlatformSyncError, syncPromotedFeedbackToAvailablePlatforms } from "@/l
 
 const feedbackPayloadSchema = z.object({
   email: z.string().email(),
+  assigned_to: z.coerce.number().int().positive().optional().nullable(),
   organisation: z.coerce.number().int().positive().optional().nullable(),
   page: z.string().max(500).optional().nullable(),
   feedback_type: z.coerce.number().int().positive().optional().nullable(),
