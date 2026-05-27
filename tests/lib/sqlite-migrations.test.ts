@@ -130,6 +130,12 @@ describe("SQLite migrations", () => {
       name: string;
       notnull: number;
     }>;
+    const notificationSettingsColumns = db.prepare("PRAGMA table_info(notification_settings)").all() as Array<{
+      name: string;
+    }>;
+    const notificationPreferencesColumns = db.prepare("PRAGMA table_info(notification_preferences)").all() as Array<{
+      name: string;
+    }>;
     const feedbackColumns = db.prepare("PRAGMA table_info(feedback)").all() as Array<{ name: string }>;
     const projectColumns = db.prepare("PRAGMA table_info(projects)").all() as Array<{ name: string }>;
     const defaultProject = db
@@ -147,6 +153,8 @@ describe("SQLite migrations", () => {
       { id: "0001_baseline" },
       { id: "0002_create_assigned_to" },
       { id: "0003_add_feedback_assigned_to" },
+      { id: "0004_create_notification_settings" },
+      { id: "0005_add_notification_preference_indexes" },
     ]);
     expect(assignedToColumns).toEqual(
       expect.arrayContaining([
@@ -166,6 +174,12 @@ describe("SQLite migrations", () => {
       ]),
     );
     expect(projectColumns.map((column) => column.name)).toContain("order");
+    expect(notificationSettingsColumns.map((column) => column.name)).toEqual(
+      expect.arrayContaining(["id", "feedback_notifications_enabled", "updated_at"]),
+    );
+    expect(notificationPreferencesColumns.map((column) => column.name)).toEqual(
+      expect.arrayContaining(["id", "email", "feedback_notifications_enabled", "created_at", "updated_at"]),
+    );
     expect(defaultProject?.id).toBeGreaterThan(0);
     expect(legacyFeedback.project_id).toBe(defaultProject?.id);
     expect(legacyFeedback.github_issue_id).toBeNull();

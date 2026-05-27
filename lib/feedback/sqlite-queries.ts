@@ -90,6 +90,46 @@ export function assignedToExists(id: number): boolean {
   return Boolean(row);
 }
 
+export function areFeedbackNotificationsGloballyEnabled(): boolean {
+  const row = db
+    .prepare(`
+      SELECT feedback_notifications_enabled
+      FROM notification_settings
+      WHERE id = 1
+      LIMIT 1
+    `)
+    .get() as { feedback_notifications_enabled: number } | undefined;
+
+  return row ? Boolean(row.feedback_notifications_enabled) : true;
+}
+
+export function filterRecipientsWithFeedbackNotificationsEnabled(recipients: string[]): string[] {
+  const normalizedRecipients = Array.from(
+    new Set(recipients.map((recipient) => recipient.trim().toLowerCase()).filter(Boolean))
+  );
+
+  if (normalizedRecipients.length === 0) {
+    return [];
+  }
+
+  if (!areFeedbackNotificationsGloballyEnabled()) {
+    return [];
+  }
+
+  const placeholders = normalizedRecipients.map(() => "?").join(", ");
+  const disabledRows = db
+    .prepare(
+      `SELECT LOWER(TRIM(email)) AS email
+       FROM notification_preferences
+       WHERE LOWER(TRIM(email)) IN (${placeholders})
+         AND feedback_notifications_enabled = 0`
+    )
+    .all(...normalizedRecipients) as Array<{ email: string }>;
+
+  const disabled = new Set(disabledRows.map((row) => row.email));
+  return normalizedRecipients.filter((recipient) => !disabled.has(recipient));
+}
+
 export function getOrganisations(filters: Record<string, string> = {}): RefRow[] {
   const isDraft = filters.draft === "true";
   const isTrashed = filters.soft_delete === "true";

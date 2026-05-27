@@ -1,6 +1,10 @@
 import nodemailer from "nodemailer";
 import { Resend } from "resend";
-import { recordNotificationAudit, getRecentlyNotified } from "@/lib/feedback/sqlite-queries";
+import {
+  filterRecipientsWithFeedbackNotificationsEnabled,
+  recordNotificationAudit,
+  getRecentlyNotified,
+} from "@/lib/feedback/sqlite-queries";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
 const DEFAULT_FEEDBACK_EMAIL_COOLDOWN_HOURS = 0;
@@ -77,19 +81,25 @@ async function sendEmailToRecipients(input: {
   );
   if (normalizedRecipients.length === 0) return;
 
+  const notificationEnabledRecipients = filterRecipientsWithFeedbackNotificationsEnabled(normalizedRecipients);
+  if (notificationEnabledRecipients.length === 0) {
+    console.info(`[${context}] Skipped: feedback notifications disabled for all target recipients or for the site.`);
+    return;
+  }
+
   const cooldownHours = getFeedbackEmailCooldownHours();
 
   // Cooldown guard: one feedback notification email per recipient within configured hours.
   const recentlyNotified =
     cooldownHours > 0
       ? getRecentlyNotified(
-          normalizedRecipients,
+          notificationEnabledRecipients,
           "feedback_%:%",
           cooldownHours
         )
       : new Set<string>();
 
-  const eligibleRecipients = normalizedRecipients.filter((r) => !recentlyNotified.has(r));
+  const eligibleRecipients = notificationEnabledRecipients.filter((r) => !recentlyNotified.has(r));
 
   if (cooldownHours > 0 && eligibleRecipients.length === 0) {
     console.info(`[${context}] Skipped: all recipients notified in the last ${cooldownHours} hours.`);

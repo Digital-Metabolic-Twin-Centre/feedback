@@ -43,6 +43,8 @@ if (FRESH) {
   console.log("Dropping existing tables...");
   db.exec(`
     DROP TABLE IF EXISTS schema_migrations;
+    DROP TABLE IF EXISTS notification_preferences;
+    DROP TABLE IF EXISTS notification_settings;
     DROP TABLE IF EXISTS notification_audit;
     DROP TABLE IF EXISTS api_keys;
     DROP TABLE IF EXISTS feedback_messages;

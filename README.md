@@ -48,6 +48,8 @@ Supported `:resource` values include:
 - `feedback_types`
 - `organisations`
 - `assigned_to`
+- `notification_settings`
+- `notification_preferences`
 - `projects`
 - `api_keys`
 
@@ -464,6 +466,26 @@ curl -X PATCH http://localhost:4001/api/v1/admin/feedback/1 \
   -H "x-api-key: $ADMIN_API_KEY" \
   -d '{"action":"assign","value":1}'
 ```
+
+Manage notification controls from the API:
+
+```bash
+curl "http://localhost:4001/api/v1/admin/meta/notification_settings" \
+  -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN"
+
+curl -X PATCH http://localhost:4001/api/v1/admin/meta/notification_settings/1 \
+  -H "Content-Type: application/json" \
+  -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN" \
+  -d '{"feedbackNotificationsEnabled":false}'
+
+curl -X POST http://localhost:4001/api/v1/admin/meta/notification_preferences \
+  -H "Content-Type: application/json" \
+  -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN" \
+  -d '{"email":"user@example.com","feedbackNotificationsEnabled":false}'
+```
+
+`notification_settings` controls whether feedback notifications are enabled for the entire site.
+`notification_preferences` lets you disable feedback notifications for specific email addresses.
 
 List thread messages:
 

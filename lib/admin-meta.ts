@@ -8,6 +8,8 @@ export const metaResourceSchema = z.enum([
   "feedback_types",
   "organisations",
   "assigned_to",
+  "notification_settings",
+  "notification_preferences",
   "projects",
   "api_keys",
 ]);
@@ -31,6 +33,15 @@ const assignedToPayloadSchema = z.object({
   name: z.string().min(1).optional(),
   title: z.string().nullable().optional(),
   email: z.string().email().optional(),
+});
+
+const notificationSettingsPayloadSchema = z.object({
+  feedbackNotificationsEnabled: booleanLike.optional(),
+});
+
+const notificationPreferencePayloadSchema = z.object({
+  email: z.string().email().optional(),
+  feedbackNotificationsEnabled: booleanLike.optional(),
 });
 
 const projectPayloadSchema = z.object({
@@ -83,6 +94,20 @@ type AssignedToSummary = {
   name: string;
   title: string | null;
   email: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type NotificationSettingsSummary = {
+  id: number;
+  feedbackNotificationsEnabled: boolean;
+  updatedAt: string;
+};
+
+type NotificationPreferenceSummary = {
+  id: number;
+  email: string;
+  feedbackNotificationsEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -223,6 +248,180 @@ function updateAssignedToById(id: number, payload: unknown): AssignedToSummary |
 
 function deleteAssignedToById(id: number): boolean {
   const result = db.prepare(`DELETE FROM assigned_to WHERE id = ?`).run(id);
+  return result.changes > 0;
+}
+
+function getNotificationSettings(): NotificationSettingsSummary {
+  const row = db
+    .prepare(`
+      SELECT id, feedback_notifications_enabled, updated_at
+      FROM notification_settings
+      WHERE id = 1
+      LIMIT 1
+    `)
+    .get() as {
+      id: number;
+      feedback_notifications_enabled: number;
+      updated_at: string;
+    } | undefined;
+
+  if (!row) {
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT OR IGNORE INTO notification_settings (id, feedback_notifications_enabled, updated_at)
+      VALUES (1, 1, ?)
+    `).run(now);
+
+    return {
+      id: 1,
+      feedbackNotificationsEnabled: true,
+      updatedAt: now,
+    };
+  }
+
+  return {
+    id: row.id,
+    feedbackNotificationsEnabled: Boolean(row.feedback_notifications_enabled),
+    updatedAt: row.updated_at,
+  };
+}
+
+function updateNotificationSettings(payload: unknown): NotificationSettingsSummary {
+  const parsed = notificationSettingsPayloadSchema.safeParse(payload);
+  if (!parsed.success || parsed.data.feedbackNotificationsEnabled === undefined) {
+    throw new Error("Invalid request payload.");
+  }
+
+  const now = new Date().toISOString();
+  db.prepare(`
+    INSERT INTO notification_settings (id, feedback_notifications_enabled, updated_at)
+    VALUES (1, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      feedback_notifications_enabled = excluded.feedback_notifications_enabled,
+      updated_at = excluded.updated_at
+  `).run(parsed.data.feedbackNotificationsEnabled ? 1 : 0, now);
+
+  return getNotificationSettings();
+}
+
+function listNotificationPreferences(): NotificationPreferenceSummary[] {
+  const rows = db
+    .prepare(`
+      SELECT id, email, feedback_notifications_enabled, created_at, updated_at
+      FROM notification_preferences
+      ORDER BY LOWER(TRIM(email)) ASC, id ASC
+    `)
+    .all() as Array<{
+      id: number;
+      email: string;
+      feedback_notifications_enabled: number;
+      created_at: string;
+      updated_at: string;
+    }>;
+
+  return rows.map((row) => ({
+    id: row.id,
+    email: row.email,
+    feedbackNotificationsEnabled: Boolean(row.feedback_notifications_enabled),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
+}
+
+function getNotificationPreferenceById(id: number): NotificationPreferenceSummary | null {
+  const row = db
+    .prepare(`
+      SELECT id, email, feedback_notifications_enabled, created_at, updated_at
+      FROM notification_preferences
+      WHERE id = ?
+      LIMIT 1
+    `)
+    .get(id) as {
+      id: number;
+      email: string;
+      feedback_notifications_enabled: number;
+      created_at: string;
+      updated_at: string;
+    } | undefined;
+
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    email: row.email,
+    feedbackNotificationsEnabled: Boolean(row.feedback_notifications_enabled),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function createNotificationPreference(payload: unknown): NotificationPreferenceSummary {
+  const parsed = notificationPreferencePayloadSchema.safeParse(payload);
+  if (!parsed.success || !parsed.data.email?.trim() || parsed.data.feedbackNotificationsEnabled === undefined) {
+    throw new Error("Invalid request payload.");
+  }
+
+  const now = new Date().toISOString();
+  const row = db
+    .prepare(`
+      INSERT INTO notification_preferences (email, feedback_notifications_enabled, created_at, updated_at)
+      VALUES (?, ?, ?, ?)
+      RETURNING id
+    `)
+    .get(
+      parsed.data.email.trim().toLowerCase(),
+      parsed.data.feedbackNotificationsEnabled ? 1 : 0,
+      now,
+      now
+    ) as { id: number };
+
+  const created = getNotificationPreferenceById(row.id);
+  if (!created) {
+    throw new Error("Failed to load created row.");
+  }
+
+  return created;
+}
+
+function updateNotificationPreferenceById(id: number, payload: unknown): NotificationPreferenceSummary | null {
+  const parsed = notificationPreferencePayloadSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new Error("Invalid request payload.");
+  }
+
+  const updates: string[] = [];
+  const params: unknown[] = [];
+
+  if (parsed.data.email !== undefined) {
+    updates.push("email = ?");
+    params.push(parsed.data.email.trim().toLowerCase());
+  }
+
+  if (parsed.data.feedbackNotificationsEnabled !== undefined) {
+    updates.push("feedback_notifications_enabled = ?");
+    params.push(parsed.data.feedbackNotificationsEnabled ? 1 : 0);
+  }
+
+  if (!updates.length) {
+    throw new Error("At least one updatable field is required.");
+  }
+
+  updates.push("updated_at = ?");
+  params.push(new Date().toISOString(), id);
+
+  const result = db
+    .prepare(`UPDATE notification_preferences SET ${updates.join(", ")} WHERE id = ?`)
+    .run(...params);
+
+  if (result.changes < 1) {
+    return null;
+  }
+
+  return getNotificationPreferenceById(id);
+}
+
+function deleteNotificationPreferenceById(id: number): boolean {
+  const result = db.prepare(`DELETE FROM notification_preferences WHERE id = ?`).run(id);
   return result.changes > 0;
 }
 
@@ -637,6 +836,10 @@ export function listMetaResource(resource: MetaResource, query: URLSearchParams)
       return listReferenceRows(resource, query.get("includeArchived") === "true");
     case "assigned_to":
       return listAssignedTo();
+    case "notification_settings":
+      return [getNotificationSettings()];
+    case "notification_preferences":
+      return listNotificationPreferences();
     case "projects":
       return listProjects(query.get("includeArchived") === "true");
     case "api_keys":
@@ -655,6 +858,10 @@ export function createMetaResource(resource: MetaResource, payload: unknown) {
       return createReferenceRow(resource, payload);
     case "assigned_to":
       return createAssignedTo(payload);
+    case "notification_settings":
+      return updateNotificationSettings(payload);
+    case "notification_preferences":
+      return createNotificationPreference(payload);
     case "projects": {
       const parsed = projectPayloadSchema.safeParse(payload);
       if (!parsed.success || !parsed.data.name) {
@@ -686,6 +893,10 @@ export function getMetaResourceById(resource: MetaResource, id: number) {
       return getReferenceRow(resource, id);
     case "assigned_to":
       return getAssignedToById(id);
+    case "notification_settings":
+      return id === 1 ? getNotificationSettings() : null;
+    case "notification_preferences":
+      return getNotificationPreferenceById(id);
     case "projects":
       return getProjectById(id);
     case "api_keys":
@@ -701,6 +912,11 @@ export function updateMetaResourceById(resource: MetaResource, id: number, paylo
       return updateReferenceRow(resource, id, payload);
     case "assigned_to":
       return updateAssignedToById(id, payload);
+    case "notification_settings":
+      if (id !== 1) return null;
+      return updateNotificationSettings(payload);
+    case "notification_preferences":
+      return updateNotificationPreferenceById(id, payload);
     case "projects":
       return updateProjectById(id, payload);
     case "api_keys":
@@ -716,6 +932,10 @@ export function deleteMetaResourceById(resource: MetaResource, id: number): bool
       return deleteReferenceRow(resource, id);
     case "assigned_to":
       return deleteAssignedToById(id);
+    case "notification_settings":
+      return false;
+    case "notification_preferences":
+      return deleteNotificationPreferenceById(id);
     case "projects":
       return deleteProjectById(id);
     case "api_keys":

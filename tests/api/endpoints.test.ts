@@ -93,9 +93,11 @@ describe("Headless API endpoints", () => {
       DELETE FROM feedback;
       DELETE FROM api_keys;
       DELETE FROM assigned_to;
+      DELETE FROM notification_preferences;
       DELETE FROM feedback_status;
       DELETE FROM feedback_types;
       DELETE FROM organisations;
+      UPDATE notification_settings SET feedback_notifications_enabled = 1, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = 1;
       DELETE FROM projects WHERE slug != 'default';
       UPDATE sqlite_sequence SET seq = 0 WHERE name IN ('feedback_status','feedback_types','organisations','assigned_to','feedback','feedback_messages','api_keys');
     `);
@@ -155,6 +157,8 @@ describe("Headless API endpoints", () => {
         expect.objectContaining({ id: "0001_baseline" }),
         expect.objectContaining({ id: "0002_create_assigned_to" }),
         expect.objectContaining({ id: "0003_add_feedback_assigned_to" }),
+        expect.objectContaining({ id: "0004_create_notification_settings" }),
+        expect.objectContaining({ id: "0005_add_notification_preference_indexes" }),
       ]),
     );
   });
@@ -246,7 +250,7 @@ describe("Headless API endpoints", () => {
           };
         }
       ).get?.parameters?.find((parameter) => parameter.name === "resource")?.schema?.enum
-    ).toEqual(expect.arrayContaining(["assigned_to"]));
+    ).toEqual(expect.arrayContaining(["assigned_to", "notification_settings", "notification_preferences"]));
     expect(spec.paths["/api/v1/admin/keys"].get.tags).toEqual(["Bootstrap Admin"]);
     expect(spec.paths["/api/v1/admin/meta/{resource}"].get.tags).toEqual(["Bootstrap Admin"]);
     expect(spec.paths["/api/v1/openapi.json"].get.tags).toEqual(["Documentation"]);
@@ -421,6 +425,60 @@ describe("Headless API endpoints", () => {
       { params: Promise.resolve({ resource: "assigned_to", id: String(createdAssignedTo.id) }) }
     );
     expect(deleteAssignedToRes.status).toBe(200);
+
+    const notificationSettingsRes = await adminMetaRoute.GET(
+      req("http://localhost/api/v1/admin/meta/notification_settings", { headers }),
+      { params: Promise.resolve({ resource: "notification_settings" }) }
+    );
+    expect(notificationSettingsRes.status).toBe(200);
+    const notificationSettingsJson = await readJson(notificationSettingsRes);
+    expect(Array.isArray(notificationSettingsJson.data)).toBe(true);
+    expect((notificationSettingsJson.data as Array<{ feedbackNotificationsEnabled: boolean }>)[0]?.feedbackNotificationsEnabled)
+      .toBe(true);
+
+    const updateNotificationSettingsRes = await adminMetaByIdRoute.PATCH(
+      req("http://localhost/api/v1/admin/meta/notification_settings/1", {
+        method: "PATCH",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ feedbackNotificationsEnabled: false }),
+      }),
+      { params: Promise.resolve({ resource: "notification_settings", id: "1" }) }
+    );
+    expect(updateNotificationSettingsRes.status).toBe(200);
+    const updateNotificationSettingsJson = await readJson(updateNotificationSettingsRes);
+    expect((updateNotificationSettingsJson.data as { feedbackNotificationsEnabled: boolean }).feedbackNotificationsEnabled)
+      .toBe(false);
+
+    const createNotificationPreferenceRes = await adminMetaRoute.POST(
+      req("http://localhost/api/v1/admin/meta/notification_preferences", {
+        method: "POST",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ email: "muted@example.com", feedbackNotificationsEnabled: false }),
+      }),
+      { params: Promise.resolve({ resource: "notification_preferences" }) }
+    );
+    expect(createNotificationPreferenceRes.status).toBe(201);
+    const createNotificationPreferenceJson = await readJson(createNotificationPreferenceRes);
+    const createdNotificationPreference = createNotificationPreferenceJson.data as {
+      id: number;
+      email: string;
+      feedbackNotificationsEnabled: boolean;
+    };
+    expect(createdNotificationPreference.email).toBe("muted@example.com");
+    expect(createdNotificationPreference.feedbackNotificationsEnabled).toBe(false);
+
+    const updateNotificationPreferenceRes = await adminMetaByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/meta/notification_preferences/${createdNotificationPreference.id}`, {
+        method: "PATCH",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ feedbackNotificationsEnabled: true }),
+      }),
+      { params: Promise.resolve({ resource: "notification_preferences", id: String(createdNotificationPreference.id) }) }
+    );
+    expect(updateNotificationPreferenceRes.status).toBe(200);
+    const updateNotificationPreferenceJson = await readJson(updateNotificationPreferenceRes);
+    expect((updateNotificationPreferenceJson.data as { feedbackNotificationsEnabled: boolean }).feedbackNotificationsEnabled)
+      .toBe(true);
 
     const createProjectRes = await adminMetaRoute.POST(
       req("http://localhost/api/v1/admin/meta/projects", {

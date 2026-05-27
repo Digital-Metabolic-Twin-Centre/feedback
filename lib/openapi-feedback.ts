@@ -511,7 +511,16 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
               required: true,
               schema: {
                 type: "string",
-                enum: ["feedback_status", "feedback_types", "organisations", "assigned_to", "projects", "api_keys"],
+                enum: [
+                  "feedback_status",
+                  "feedback_types",
+                  "organisations",
+                  "assigned_to",
+                  "notification_settings",
+                  "notification_preferences",
+                  "projects",
+                  "api_keys",
+                ],
               },
             },
             {
@@ -553,7 +562,16 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
               required: true,
               schema: {
                 type: "string",
-                enum: ["feedback_status", "feedback_types", "organisations", "assigned_to", "projects", "api_keys"],
+                enum: [
+                  "feedback_status",
+                  "feedback_types",
+                  "organisations",
+                  "assigned_to",
+                  "notification_settings",
+                  "notification_preferences",
+                  "projects",
+                  "api_keys",
+                ],
               },
             },
             {
@@ -595,7 +613,16 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
               required: true,
               schema: {
                 type: "string",
-                enum: ["feedback_status", "feedback_types", "organisations", "assigned_to", "projects", "api_keys"],
+                enum: [
+                  "feedback_status",
+                  "feedback_types",
+                  "organisations",
+                  "assigned_to",
+                  "notification_settings",
+                  "notification_preferences",
+                  "projects",
+                  "api_keys",
+                ],
               },
             },
             {
@@ -626,7 +653,16 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
               required: true,
               schema: {
                 type: "string",
-                enum: ["feedback_status", "feedback_types", "organisations", "assigned_to", "projects", "api_keys"],
+                enum: [
+                  "feedback_status",
+                  "feedback_types",
+                  "organisations",
+                  "assigned_to",
+                  "notification_settings",
+                  "notification_preferences",
+                  "projects",
+                  "api_keys",
+                ],
               },
             },
             {
@@ -680,7 +716,16 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
               required: true,
               schema: {
                 type: "string",
-                enum: ["feedback_status", "feedback_types", "organisations", "assigned_to", "projects", "api_keys"],
+                enum: [
+                  "feedback_status",
+                  "feedback_types",
+                  "organisations",
+                  "assigned_to",
+                  "notification_settings",
+                  "notification_preferences",
+                  "projects",
+                  "api_keys",
+                ],
               },
             },
             {
