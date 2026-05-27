@@ -52,6 +52,7 @@ export async function POST(
     const message = error instanceof Error ? error.message : "Internal server error";
     const lowered = message.toLowerCase();
     const status = lowered.includes("invalid request payload")
+      || lowered.includes("read-only")
       ? 400
       : lowered.includes("exists") || lowered.includes("unique")
         ? 409

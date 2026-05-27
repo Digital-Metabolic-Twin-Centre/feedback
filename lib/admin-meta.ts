@@ -8,6 +8,7 @@ export const metaResourceSchema = z.enum([
   "feedback_types",
   "organisations",
   "assigned_to",
+  "notification_audit",
   "notification_settings",
   "notification_preferences",
   "projects",
@@ -110,6 +111,14 @@ type NotificationPreferenceSummary = {
   feedbackNotificationsEnabled: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+type NotificationAuditSummary = {
+  id: number;
+  sessionId: string;
+  userEmail: string;
+  order: number;
+  createdAt: string;
 };
 
 const referenceConfigs = {
@@ -249,6 +258,61 @@ function updateAssignedToById(id: number, payload: unknown): AssignedToSummary |
 function deleteAssignedToById(id: number): boolean {
   const result = db.prepare(`DELETE FROM assigned_to WHERE id = ?`).run(id);
   return result.changes > 0;
+}
+
+function listNotificationAudit(): NotificationAuditSummary[] {
+  const rows = db
+    .prepare(`
+      SELECT id, session_id, user_email, "order", created_at
+      FROM notification_audit
+      ORDER BY created_at DESC, id DESC
+    `)
+    .all() as Array<{
+      id: number;
+      session_id: string;
+      user_email: string;
+      order: number;
+      created_at: string;
+    }>;
+
+  return rows.map((row) => ({
+    id: row.id,
+    sessionId: row.session_id,
+    userEmail: row.user_email,
+    order: row.order,
+    createdAt: row.created_at,
+  }));
+}
+
+function getNotificationAuditById(id: number): NotificationAuditSummary | null {
+  const row = db
+    .prepare(`
+      SELECT id, session_id, user_email, "order", created_at
+      FROM notification_audit
+      WHERE id = ?
+      LIMIT 1
+    `)
+    .get(id) as {
+      id: number;
+      session_id: string;
+      user_email: string;
+      order: number;
+      created_at: string;
+    } | undefined;
+
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    userEmail: row.user_email,
+    order: row.order,
+    createdAt: row.created_at,
+  };
+}
+
+function assertReadOnlyResource(resource: string): never {
+  throw new Error(`${resource} is read-only.`);
 }
 
 function getNotificationSettings(): NotificationSettingsSummary {
@@ -836,6 +900,8 @@ export function listMetaResource(resource: MetaResource, query: URLSearchParams)
       return listReferenceRows(resource, query.get("includeArchived") === "true");
     case "assigned_to":
       return listAssignedTo();
+    case "notification_audit":
+      return listNotificationAudit();
     case "notification_settings":
       return [getNotificationSettings()];
     case "notification_preferences":
@@ -858,6 +924,8 @@ export function createMetaResource(resource: MetaResource, payload: unknown) {
       return createReferenceRow(resource, payload);
     case "assigned_to":
       return createAssignedTo(payload);
+    case "notification_audit":
+      return assertReadOnlyResource("notification_audit");
     case "notification_settings":
       return updateNotificationSettings(payload);
     case "notification_preferences":
@@ -893,6 +961,8 @@ export function getMetaResourceById(resource: MetaResource, id: number) {
       return getReferenceRow(resource, id);
     case "assigned_to":
       return getAssignedToById(id);
+    case "notification_audit":
+      return getNotificationAuditById(id);
     case "notification_settings":
       return id === 1 ? getNotificationSettings() : null;
     case "notification_preferences":
@@ -912,6 +982,8 @@ export function updateMetaResourceById(resource: MetaResource, id: number, paylo
       return updateReferenceRow(resource, id, payload);
     case "assigned_to":
       return updateAssignedToById(id, payload);
+    case "notification_audit":
+      return assertReadOnlyResource("notification_audit");
     case "notification_settings":
       if (id !== 1) return null;
       return updateNotificationSettings(payload);
@@ -932,6 +1004,8 @@ export function deleteMetaResourceById(resource: MetaResource, id: number): bool
       return deleteReferenceRow(resource, id);
     case "assigned_to":
       return deleteAssignedToById(id);
+    case "notification_audit":
+      return assertReadOnlyResource("notification_audit");
     case "notification_settings":
       return false;
     case "notification_preferences":

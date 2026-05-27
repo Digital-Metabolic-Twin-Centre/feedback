@@ -76,6 +76,7 @@ export async function PATCH(
     const status = lowered.includes("invalid request payload")
       || lowered.includes("at least one updatable field")
       || lowered.includes("cannot be empty")
+      || lowered.includes("read-only")
       ? 400
       : lowered.includes("unique") || lowered.includes("already exists")
         ? 409
@@ -110,9 +111,11 @@ export async function DELETE(
 
     return v1Json({ success: true, deletedId: id });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    const status = message.toLowerCase().includes("read-only") ? 400 : 500;
     return v1Json(
-      { success: false, error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
+      { success: false, error: message },
+      { status }
     );
   }
 }

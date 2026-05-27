@@ -253,7 +253,7 @@ describe("Headless API endpoints", () => {
           };
         }
       ).get?.parameters?.find((parameter) => parameter.name === "resource")?.schema?.enum
-    ).toEqual(expect.arrayContaining(["assigned_to", "notification_settings", "notification_preferences"]));
+    ).toEqual(expect.arrayContaining(["assigned_to", "notification_audit", "notification_settings", "notification_preferences"]));
     expect(
       (
         spec.components as {
@@ -268,6 +268,13 @@ describe("Headless API endpoints", () => {
         }
       ).schemas?.NotificationPreferencePayload?.properties
     ).toEqual(expect.objectContaining({ email: expect.any(Object), feedbackNotificationsEnabled: expect.any(Object) }));
+    expect(
+      (
+        spec.components as {
+          schemas?: Record<string, { properties?: Record<string, unknown> }>;
+        }
+      ).schemas?.NotificationAuditRecord?.properties
+    ).toEqual(expect.objectContaining({ sessionId: expect.any(Object), userEmail: expect.any(Object) }));
     expect(
       (
         spec.components as {
@@ -463,6 +470,37 @@ describe("Headless API endpoints", () => {
       { params: Promise.resolve({ resource: "assigned_to", id: String(createdAssignedTo.id) }) }
     );
     expect(deleteAssignedToRes.status).toBe(200);
+
+    db.prepare(`
+      INSERT INTO notification_audit (session_id, user_email, "order", created_at)
+      VALUES (?, ?, ?, ?)
+    `).run("feedback_reply:1", "audit@example.com", 99, new Date().toISOString());
+
+    const listNotificationAuditRes = await adminMetaRoute.GET(
+      req("http://localhost/api/v1/admin/meta/notification_audit", { headers }),
+      { params: Promise.resolve({ resource: "notification_audit" }) }
+    );
+    expect(listNotificationAuditRes.status).toBe(200);
+    const listNotificationAuditJson = await readJson(listNotificationAuditRes);
+    const auditRows = listNotificationAuditJson.data as Array<{ id: number; sessionId: string; userEmail: string }>;
+    expect(auditRows[0]?.sessionId).toBe("feedback_reply:1");
+    expect(auditRows[0]?.userEmail).toBe("audit@example.com");
+
+    const getNotificationAuditRes = await adminMetaByIdRoute.GET(
+      req(`http://localhost/api/v1/admin/meta/notification_audit/${auditRows[0].id}`, { headers }),
+      { params: Promise.resolve({ resource: "notification_audit", id: String(auditRows[0].id) }) }
+    );
+    expect(getNotificationAuditRes.status).toBe(200);
+
+    const createNotificationAuditRes = await adminMetaRoute.POST(
+      req("http://localhost/api/v1/admin/meta/notification_audit", {
+        method: "POST",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ sessionId: "x", userEmail: "x@example.com" }),
+      }),
+      { params: Promise.resolve({ resource: "notification_audit" }) }
+    );
+    expect(createNotificationAuditRes.status).toBe(400);
 
     const notificationSettingsRes = await adminMetaRoute.GET(
       req("http://localhost/api/v1/admin/meta/notification_settings", { headers }),

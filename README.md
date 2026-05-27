@@ -48,6 +48,7 @@ Supported `:resource` values include:
 - `feedback_types`
 - `organisations`
 - `assigned_to`
+- `notification_audit`
 - `notification_settings`
 - `notification_preferences`
 - `projects`
@@ -486,6 +487,7 @@ curl -X POST http://localhost:4001/api/v1/admin/meta/notification_preferences \
 
 `notification_settings` controls whether feedback notifications are enabled for the entire site.
 `notification_preferences` lets you disable feedback notifications for specific email addresses.
+`notification_audit` is read-only and exposes the recorded notification delivery audit trail.
 
 List thread messages:
 
