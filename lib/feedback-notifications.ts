@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import { Resend } from "resend";
 import {
   filterRecipientsWithFeedbackNotificationsEnabled,
+  getInternalNotificationRecipientsForFeedback,
   recordNotificationAudit,
   getRecentlyNotified,
 } from "@/lib/feedback/sqlite-queries";
@@ -15,17 +16,6 @@ function redactEmail(email: string): string {
   if (!localPart || !domain) return "redacted";
   if (localPart.length <= 2) return `**@${domain}`;
   return `${localPart.slice(0, 2)}***@${domain}`;
-}
-
-function parseCommaSeparatedEmails(raw: string | null | undefined): string[] {
-  if (!raw) return [];
-  const deduped = new Set<string>();
-  for (const token of raw.split(",")) {
-    const email = token.trim().toLowerCase();
-    if (!email || !EMAIL_REGEX.test(email)) continue;
-    deduped.add(email);
-  }
-  return Array.from(deduped);
 }
 
 function buildFeedbackUrl(feedbackId: number): string {
@@ -58,10 +48,6 @@ function getFeedbackEmailCooldownHours(): number {
   const parsed = Number(raw);
   if (!Number.isFinite(parsed) || parsed < 0) return DEFAULT_FEEDBACK_EMAIL_COOLDOWN_HOURS;
   return Math.min(Math.floor(parsed), 168);
-}
-
-function getFeedbackDistributionRecipients(): string[] {
-  return parseCommaSeparatedEmails(process.env.FEEDBACK_DISTRIBUTION_EMAILS);
 }
 
 async function sendEmailToRecipients(input: {
@@ -192,7 +178,7 @@ export async function notifyfeedbackubmitted(input: {
   submittedByEmail: string;
   page?: string | null;
 }): Promise<void> {
-  const recipients = getFeedbackDistributionRecipients();
+  const recipients = getInternalNotificationRecipientsForFeedback(input.feedbackId);
   if (recipients.length === 0) return;
 
   const feedbackUrl = buildFeedbackUrl(input.feedbackId);
@@ -287,7 +273,7 @@ export async function notifyFeedbackDistributionOfReply(input: {
   const replier = input.replierEmail.trim().toLowerCase();
   const submitter = input.submitterEmail.trim().toLowerCase();
 
-  const recipients = getFeedbackDistributionRecipients();
+  const recipients = getInternalNotificationRecipientsForFeedback(input.feedbackId);
   if (recipients.length === 0) return;
 
   const feedbackUrl = buildFeedbackUrl(input.feedbackId);

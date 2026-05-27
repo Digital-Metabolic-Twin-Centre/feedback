@@ -8,7 +8,6 @@ describe("feedback notifications", () => {
     process.env = {
       ...originalEnv,
       MAIL_PROVIDER: "disabled",
-      FEEDBACK_DISTRIBUTION_EMAILS: "ops@example.com, bad, ops@example.com",
       NEXT_PUBLIC_APP_URL: "http://localhost:4001",
     };
     infoSpy.mockClear();
@@ -24,6 +23,7 @@ describe("feedback notifications", () => {
   test("skips when recipients are globally disabled", async () => {
     jest.doMock("@/lib/feedback/sqlite-queries", () => ({
       filterRecipientsWithFeedbackNotificationsEnabled: jest.fn().mockReturnValue([]),
+      getInternalNotificationRecipientsForFeedback: jest.fn().mockReturnValue(["default@example.com"]),
       recordNotificationAudit: jest.fn(),
       getRecentlyNotified: jest.fn(),
     }));
@@ -36,9 +36,11 @@ describe("feedback notifications", () => {
     );
   });
 
-  test("sends dev-mode notification with normalized recipients", async () => {
+  test("sends internal reply notification to the assigned/default recipient", async () => {
+    const getInternalNotificationRecipientsForFeedback = jest.fn().mockReturnValue(["assignee@example.com"]);
     const filterRecipientsWithFeedbackNotificationsEnabled = jest.fn((recipients: string[]) => recipients);
     jest.doMock("@/lib/feedback/sqlite-queries", () => ({
+      getInternalNotificationRecipientsForFeedback,
       filterRecipientsWithFeedbackNotificationsEnabled,
       recordNotificationAudit: jest.fn(),
       getRecentlyNotified: jest.fn().mockReturnValue(new Set()),
@@ -52,7 +54,8 @@ describe("feedback notifications", () => {
       replierRole: "Admin",
     });
 
-    expect(filterRecipientsWithFeedbackNotificationsEnabled).toHaveBeenCalledWith(["ops@example.com"]);
+    expect(getInternalNotificationRecipientsForFeedback).toHaveBeenCalledWith(2);
+    expect(filterRecipientsWithFeedbackNotificationsEnabled).toHaveBeenCalledWith(["assignee@example.com"]);
     expect(infoSpy).toHaveBeenCalledWith("[notifyFeedbackDistributionOfReply] ✉️ Email would be sent (dev mode)");
   });
 });

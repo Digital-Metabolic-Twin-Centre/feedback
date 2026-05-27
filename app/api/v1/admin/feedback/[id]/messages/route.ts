@@ -112,14 +112,14 @@ export async function POST(
         replierEmail: createdBy,
         replierRole: "Admin",
       }).catch((err) => logError(err, { operation: "notifyfeedbackubmitterOfReply", resource: String(feedbackId) }));
-
-      notifyFeedbackDistributionOfReply({
-        feedbackId,
-        submitterEmail: feedback.email,
-        replierEmail: createdBy,
-        replierRole: "Admin",
-      }).catch((err) => logError(err, { operation: "notifyFeedbackDistributionOfReply", resource: String(feedbackId) }));
     }
+
+    notifyFeedbackDistributionOfReply({
+      feedbackId,
+      submitterEmail: feedback.email ?? createdBy,
+      replierEmail: createdBy,
+      replierRole: "Admin",
+    }).catch((err) => logError(err, { operation: "notifyFeedbackDistributionOfReply", resource: String(feedbackId) }));
 
     syncPromotedFeedbackToAvailablePlatforms(feedbackId).catch((err) => {
       logError(err, { operation: "syncPromotedFeedbackToPlatformsOnReply", resource: String(feedbackId) });

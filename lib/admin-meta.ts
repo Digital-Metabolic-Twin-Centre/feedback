@@ -212,6 +212,8 @@ function createAssignedTo(payload: unknown): AssignedToSummary {
     throw new Error("Invalid request payload.");
   }
 
+  const name = parsed.data.name.trim();
+  const email = parsed.data.email.trim().toLowerCase();
   const now = new Date().toISOString();
   const row = db.transaction(() => {
     if (parsed.data.isDefault) {
@@ -225,9 +227,9 @@ function createAssignedTo(payload: unknown): AssignedToSummary {
          RETURNING id`
       )
       .get(
-        parsed.data.name.trim(),
+        name,
         parsed.data.title?.trim() || null,
-        parsed.data.email.trim().toLowerCase(),
+        email,
         parsed.data.isDefault ? 1 : 0,
         now,
         now

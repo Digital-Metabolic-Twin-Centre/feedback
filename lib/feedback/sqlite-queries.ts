@@ -138,6 +138,33 @@ export function filterRecipientsWithFeedbackNotificationsEnabled(recipients: str
   return normalizedRecipients.filter((recipient) => !disabled.has(recipient));
 }
 
+export function getInternalNotificationRecipientsForFeedback(feedbackId: number): string[] {
+  const assignedRow = db
+    .prepare(
+      `SELECT LOWER(TRIM(assignee.email)) AS email
+       FROM feedback f
+       LEFT JOIN assigned_to assignee ON f.assigned_to = assignee.id
+       WHERE f.id = ?
+       LIMIT 1`
+    )
+    .get(feedbackId) as { email: string | null } | undefined;
+
+  if (assignedRow?.email) {
+    return [assignedRow.email];
+  }
+
+  const defaultRow = db
+    .prepare(
+      `SELECT LOWER(TRIM(email)) AS email
+       FROM assigned_to
+       WHERE is_default = 1
+       LIMIT 1`
+    )
+    .get() as { email: string | null } | undefined;
+
+  return defaultRow?.email ? [defaultRow.email] : [];
+}
+
 export function getOrganisations(filters: Record<string, string> = {}): RefRow[] {
   const isDraft = filters.draft === "true";
   const isTrashed = filters.soft_delete === "true";

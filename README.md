@@ -120,14 +120,13 @@ SQLITE_PATH=./data/feedback.db
 
 Email notifications are optional and are disabled by default. When enabled, the app can:
 
-- notify distribution recipients when feedback is submitted
+- notify the assigned feedback owner, or the default owner when unassigned, when feedback is submitted
 - notify the original submitter when a reply is added by another actor
-- notify distribution recipients when a reply is added
+- notify the assigned feedback owner, or the default owner when unassigned, when a reply is added
 
 Optional mail configuration:
 
 ```env
-FEEDBACK_DISTRIBUTION_EMAILS=ops@example.com,product@example.com
 FEEDBACK_EMAIL_COOLDOWN_HOURS=0
 FEEDBACK_EMAIL_URL_TEMPLATE=https://your-site.example/feedback?feedbackId={feedbackId}
 

@@ -34,7 +34,8 @@ describe("feedback route branches", () => {
     const getFeedbackById = jest.fn()
       .mockReturnValueOnce({ id: 1, email: "user@example.com", feedback_status_name: "Open" })
       .mockReturnValueOnce({ id: 1, email: "user@example.com", feedback_status_name: "Closed" })
-      .mockReturnValueOnce({ id: 1, email: "user@example.com", feedback_status_name: "Open" });
+      .mockReturnValueOnce({ id: 1, email: "user@example.com", feedback_status_name: "Open" })
+      .mockReturnValueOnce({ id: 2, email: null, feedback_status_name: "Open" });
     const getThreadMessages = jest.fn().mockReturnValue([{ id: 1 }]);
     const insertThreadMessage = jest.fn();
     const notifyfeedbackubmitterOfReply = jest.fn().mockResolvedValue(undefined);
@@ -44,6 +45,7 @@ describe("feedback route branches", () => {
 
     jest.doMock("@/lib/api-v1", () => ({
       authenticateApiKey,
+      requireAdmin: jest.fn().mockReturnValue(null),
       v1Json: (body: unknown, init?: ResponseInit) => Response.json(body, { status: init?.status ?? 200 }),
       v1PreflightResponse: jest.fn(),
     }));
@@ -102,5 +104,28 @@ describe("feedback route branches", () => {
     expect(notifyfeedbackubmitterOfReply).toHaveBeenCalled();
     expect(notifyFeedbackDistributionOfReply).toHaveBeenCalled();
     expect(syncPromotedFeedbackToAvailablePlatforms).toHaveBeenCalledWith(1);
+
+    notifyfeedbackubmitterOfReply.mockClear();
+    notifyFeedbackDistributionOfReply.mockClear();
+
+    const adminRoute = await import("@/app/api/v1/admin/feedback/[id]/messages/route");
+    const adminPostRes = await adminRoute.POST(
+      req("http://localhost/api/v1/admin/feedback/2/messages", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ message: "admin follow up" }),
+      }),
+      { params: Promise.resolve({ id: "2" }) },
+    );
+
+    expect(adminPostRes.status).toBe(201);
+    expect(notifyfeedbackubmitterOfReply).not.toHaveBeenCalled();
+    expect(notifyFeedbackDistributionOfReply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        feedbackId: 2,
+        submitterEmail: "admin-key-12",
+        replierRole: "Admin",
+      }),
+    );
   });
 });
