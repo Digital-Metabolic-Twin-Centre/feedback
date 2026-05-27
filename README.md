@@ -42,6 +42,15 @@ Additional generated diagrams are available in [`diagrams/`](./diagrams), includ
 
 These routes require `x-bootstrap-token`.
 
+Supported `:resource` values include:
+
+- `feedback_status`
+- `feedback_types`
+- `organisations`
+- `assigned_to`
+- `projects`
+- `api_keys`
+
 ### Project API Key Routes
 
 - `POST /api/v1/feedback`
@@ -424,6 +433,7 @@ Supported `action` values for `PATCH /api/v1/admin/feedback/:id`:
 
 - `type`
 - `status`
+- `assign`
 - `close`
 - `wontfix`
 - `promote`
@@ -432,6 +442,28 @@ Supported `action` values for `PATCH /api/v1/admin/feedback/:id`:
 - `restore`
 
 For `promote` and `draft`, the API accepts booleans and boolean-like strings such as `"true"`, `"false"`, `"yes"`, and `"no"`.
+
+For `assign`, the API accepts:
+
+- an assignee id such as `{"action":"assign","value":3}`
+- `null` to clear the assignment
+
+Manage assignees with the bootstrap meta routes:
+
+```bash
+curl -X POST http://localhost:4001/api/v1/admin/meta/assigned_to \
+  -H "Content-Type: application/json" \
+  -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN" \
+  -d '{"name":"Alex Admin","title":"Support Lead","email":"alex@example.com"}'
+
+curl "http://localhost:4001/api/v1/admin/meta/assigned_to" \
+  -H "x-bootstrap-token: $FEEDBACK_BOOTSTRAP_TOKEN"
+
+curl -X PATCH http://localhost:4001/api/v1/admin/feedback/1 \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $ADMIN_API_KEY" \
+  -d '{"action":"assign","value":1}'
+```
 
 List thread messages:
 

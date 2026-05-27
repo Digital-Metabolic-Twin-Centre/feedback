@@ -92,11 +92,12 @@ describe("Headless API endpoints", () => {
       DELETE FROM feedback_messages;
       DELETE FROM feedback;
       DELETE FROM api_keys;
+      DELETE FROM assigned_to;
       DELETE FROM feedback_status;
       DELETE FROM feedback_types;
       DELETE FROM organisations;
       DELETE FROM projects WHERE slug != 'default';
-      UPDATE sqlite_sequence SET seq = 0 WHERE name IN ('feedback_status','feedback_types','organisations','feedback','feedback_messages','api_keys');
+      UPDATE sqlite_sequence SET seq = 0 WHERE name IN ('feedback_status','feedback_types','organisations','assigned_to','feedback','feedback_messages','api_keys');
     `);
 
     db.exec(`
@@ -236,7 +237,16 @@ describe("Headless API endpoints", () => {
           };
         }
       ).patch?.requestBody?.content?.["application/json"]?.schema?.properties?.action?.enum
-    ).toEqual(expect.arrayContaining(["type", "status", "promote", "draft"]));
+    ).toEqual(expect.arrayContaining(["type", "status", "assign", "promote", "draft"]));
+    expect(
+      (
+        spec.paths["/api/v1/admin/meta/{resource}"] as {
+          get?: {
+            parameters?: Array<{ name: string; schema?: { enum?: string[] } }>;
+          };
+        }
+      ).get?.parameters?.find((parameter) => parameter.name === "resource")?.schema?.enum
+    ).toEqual(expect.arrayContaining(["assigned_to"]));
     expect(spec.paths["/api/v1/admin/keys"].get.tags).toEqual(["Bootstrap Admin"]);
     expect(spec.paths["/api/v1/admin/meta/{resource}"].get.tags).toEqual(["Bootstrap Admin"]);
     expect(spec.paths["/api/v1/openapi.json"].get.tags).toEqual(["Documentation"]);
@@ -366,6 +376,51 @@ describe("Headless API endpoints", () => {
     const updateOrganisationJson = await readJson(updateOrganisationRes);
     const updatedOrganisation = updateOrganisationJson.data as { country: string };
     expect(updatedOrganisation.country).toBe("GB");
+
+    const createAssignedToRes = await adminMetaRoute.POST(
+      req("http://localhost/api/v1/admin/meta/assigned_to", {
+        method: "POST",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ name: "Alex Admin", title: "Support Lead", email: "alex@example.com" }),
+      }),
+      { params: Promise.resolve({ resource: "assigned_to" }) }
+    );
+    expect(createAssignedToRes.status).toBe(201);
+    const createAssignedToJson = await readJson(createAssignedToRes);
+    const createdAssignedTo = createAssignedToJson.data as {
+      id: number;
+      title: string | null;
+      email: string;
+    };
+    expect(createdAssignedTo.title).toBe("Support Lead");
+
+    const getAssignedToRes = await adminMetaByIdRoute.GET(
+      req(`http://localhost/api/v1/admin/meta/assigned_to/${createdAssignedTo.id}`, { headers }),
+      { params: Promise.resolve({ resource: "assigned_to", id: String(createdAssignedTo.id) }) }
+    );
+    expect(getAssignedToRes.status).toBe(200);
+
+    const updateAssignedToRes = await adminMetaByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/meta/assigned_to/${createdAssignedTo.id}`, {
+        method: "PATCH",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ title: null, email: "alex.updated@example.com" }),
+      }),
+      { params: Promise.resolve({ resource: "assigned_to", id: String(createdAssignedTo.id) }) }
+    );
+    expect(updateAssignedToRes.status).toBe(200);
+    const updateAssignedToJson = await readJson(updateAssignedToRes);
+    expect((updateAssignedToJson.data as { title: string | null }).title).toBeNull();
+    expect((updateAssignedToJson.data as { email: string }).email).toBe("alex.updated@example.com");
+
+    const deleteAssignedToRes = await adminMetaByIdRoute.DELETE(
+      req(`http://localhost/api/v1/admin/meta/assigned_to/${createdAssignedTo.id}`, {
+        method: "DELETE",
+        headers,
+      }),
+      { params: Promise.resolve({ resource: "assigned_to", id: String(createdAssignedTo.id) }) }
+    );
+    expect(deleteAssignedToRes.status).toBe(200);
 
     const createProjectRes = await adminMetaRoute.POST(
       req("http://localhost/api/v1/admin/meta/projects", {
@@ -677,7 +732,11 @@ describe("Headless API endpoints", () => {
     expect(adminReplyRes.status).toBe(409);
   });
 
-  test("admin feedback patch accepts type, status, promote, and draft actions", async () => {
+  test("admin feedback patch accepts type, status, assign, promote, and draft actions", async () => {
+    const now = new Date().toISOString();
+    db.prepare(`INSERT INTO assigned_to (id, name, title, email, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
+      .run(1, "Pat Assignee", "Coordinator", "pat@example.com", now, now);
+
     const createRes = await feedbackRoute.POST(
       req("http://localhost/api/v1/feedback", {
         method: "POST",
@@ -725,6 +784,19 @@ describe("Headless API endpoints", () => {
     );
     expect(statusRes.status).toBe(200);
 
+    const assignRes = await adminFeedbackByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": adminApiKey,
+        },
+        body: JSON.stringify({ action: "assign", value: 1 }),
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) }
+    );
+    expect(assignRes.status).toBe(200);
+
     const promoteRes = await adminFeedbackByIdRoute.PATCH(
       req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
         method: "PATCH",
@@ -763,14 +835,81 @@ describe("Headless API endpoints", () => {
     const data = detailJson.data as {
       feedback_type: number;
       feedback_status: number;
+      assigned_to: number | null;
+      assigned_to_name: string | null;
       promote: boolean;
       draft: boolean;
     };
 
     expect(data.feedback_type).toBe(2);
     expect(data.feedback_status).toBe(2);
+    expect(data.assigned_to).toBe(1);
+    expect(data.assigned_to_name).toBe("Pat Assignee");
     expect(data.promote).toBe(true);
     expect(data.draft).toBe(true);
+  });
+
+  test("assign action accepts null to unassign feedback", async () => {
+    const now = new Date().toISOString();
+    db.prepare(`INSERT INTO assigned_to (id, name, title, email, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
+      .run(1, "Sam Owner", null, "sam@example.com", now, now);
+
+    const createRes = await feedbackRoute.POST(
+      req("http://localhost/api/v1/feedback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": userApiKey,
+        },
+        body: JSON.stringify({
+          email: "assign-null@example.com",
+          organisation: 1,
+          feedback_type: 1,
+          feedback_status: 1,
+          page: "/assign-null",
+          initial_message: "Assign then unassign.",
+        }),
+      }),
+    );
+    expect(createRes.status).toBe(201);
+    const created = await readJson(createRes);
+    const feedbackId = created.id as number;
+
+    const assignRes = await adminFeedbackByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": adminApiKey,
+        },
+        body: JSON.stringify({ action: "assign", value: 1 }),
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) },
+    );
+    expect(assignRes.status).toBe(200);
+
+    const unassignRes = await adminFeedbackByIdRoute.PATCH(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": adminApiKey,
+        },
+        body: JSON.stringify({ action: "assign", value: null }),
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) },
+    );
+    expect(unassignRes.status).toBe(200);
+
+    const detailRes = await adminFeedbackByIdRoute.GET(
+      req(`http://localhost/api/v1/admin/feedback/${feedbackId}`, {
+        headers: { "x-api-key": adminApiKey },
+      }),
+      { params: Promise.resolve({ id: String(feedbackId) }) },
+    );
+    expect(detailRes.status).toBe(200);
+    const detailJson = await readJson(detailRes);
+    expect((detailJson.data as { assigned_to: number | null }).assigned_to).toBeNull();
   });
 
   test("promote and draft actions accept boolean-like strings", async () => {

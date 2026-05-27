@@ -7,6 +7,7 @@ export const metaResourceSchema = z.enum([
   "feedback_status",
   "feedback_types",
   "organisations",
+  "assigned_to",
   "projects",
   "api_keys",
 ]);
@@ -24,6 +25,12 @@ const referencePayloadSchema = z.object({
   softDelete: booleanLike.optional(),
   createdBy: z.string().nullable().optional(),
   updatedBy: z.string().nullable().optional(),
+});
+
+const assignedToPayloadSchema = z.object({
+  name: z.string().min(1).optional(),
+  title: z.string().nullable().optional(),
+  email: z.string().email().optional(),
 });
 
 const projectPayloadSchema = z.object({
@@ -71,11 +78,153 @@ type ApiKeyDetail = ApiKeySummary & {
   softDelete: boolean;
 };
 
+type AssignedToSummary = {
+  id: number;
+  name: string;
+  title: string | null;
+  email: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 const referenceConfigs = {
   feedback_status: { table: "feedback_status", orderBy: "id ASC", hasCountry: false },
   feedback_types: { table: "feedback_types", orderBy: "id ASC", hasCountry: false },
   organisations: { table: "organisations", orderBy: "name ASC", hasCountry: true },
 } as const satisfies Record<string, { table: string; orderBy: string; hasCountry: boolean }>;
+
+function getAssignedToById(id: number): AssignedToSummary | null {
+  const row = db
+    .prepare(
+      `SELECT id, name, title, email, created_at, updated_at
+       FROM assigned_to
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .get(id) as {
+      id: number;
+      name: string;
+      title: string | null;
+      email: string;
+      created_at: string;
+      updated_at: string;
+    } | undefined;
+
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    name: row.name,
+    title: row.title,
+    email: row.email,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function listAssignedTo(): AssignedToSummary[] {
+  const rows = db
+    .prepare(
+      `SELECT id, name, title, email, created_at, updated_at
+       FROM assigned_to
+       ORDER BY LOWER(TRIM(name)) ASC, id ASC`
+    )
+    .all() as Array<{
+      id: number;
+      name: string;
+      title: string | null;
+      email: string;
+      created_at: string;
+      updated_at: string;
+    }>;
+
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    title: row.title,
+    email: row.email,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
+}
+
+function createAssignedTo(payload: unknown): AssignedToSummary {
+  const parsed = assignedToPayloadSchema.safeParse(payload);
+  if (!parsed.success || !parsed.data.name?.trim() || !parsed.data.email?.trim()) {
+    throw new Error("Invalid request payload.");
+  }
+
+  const now = new Date().toISOString();
+  const row = db
+    .prepare(
+      `INSERT INTO assigned_to (name, title, email, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?)
+       RETURNING id`
+    )
+    .get(
+      parsed.data.name.trim(),
+      parsed.data.title?.trim() || null,
+      parsed.data.email.trim().toLowerCase(),
+      now,
+      now
+    ) as { id: number };
+
+  const created = getAssignedToById(row.id);
+  if (!created) {
+    throw new Error("Failed to load created row.");
+  }
+
+  return created;
+}
+
+function updateAssignedToById(id: number, payload: unknown): AssignedToSummary | null {
+  const parsed = assignedToPayloadSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new Error("Invalid request payload.");
+  }
+
+  const updates: string[] = [];
+  const params: unknown[] = [];
+
+  if (parsed.data.name !== undefined) {
+    const name = parsed.data.name.trim();
+    if (!name) throw new Error("Name cannot be empty.");
+    updates.push("name = ?");
+    params.push(name);
+  }
+
+  if (parsed.data.title !== undefined) {
+    updates.push("title = ?");
+    params.push(parsed.data.title?.trim() || null);
+  }
+
+  if (parsed.data.email !== undefined) {
+    updates.push("email = ?");
+    params.push(parsed.data.email.trim().toLowerCase());
+  }
+
+  if (!updates.length) {
+    throw new Error("At least one updatable field is required.");
+  }
+
+  updates.push("updated_at = ?");
+  params.push(new Date().toISOString(), id);
+
+  const result = db
+    .prepare(`UPDATE assigned_to SET ${updates.join(", ")} WHERE id = ?`)
+    .run(...params);
+
+  if (result.changes < 1) {
+    return null;
+  }
+
+  return getAssignedToById(id);
+}
+
+function deleteAssignedToById(id: number): boolean {
+  const result = db.prepare(`DELETE FROM assigned_to WHERE id = ?`).run(id);
+  return result.changes > 0;
+}
 
 function normalizedNameExists(
   resource: keyof typeof referenceConfigs,
@@ -486,6 +635,8 @@ export function listMetaResource(resource: MetaResource, query: URLSearchParams)
     case "feedback_types":
     case "organisations":
       return listReferenceRows(resource, query.get("includeArchived") === "true");
+    case "assigned_to":
+      return listAssignedTo();
     case "projects":
       return listProjects(query.get("includeArchived") === "true");
     case "api_keys":
@@ -502,6 +653,8 @@ export function createMetaResource(resource: MetaResource, payload: unknown) {
     case "feedback_types":
     case "organisations":
       return createReferenceRow(resource, payload);
+    case "assigned_to":
+      return createAssignedTo(payload);
     case "projects": {
       const parsed = projectPayloadSchema.safeParse(payload);
       if (!parsed.success || !parsed.data.name) {
@@ -531,6 +684,8 @@ export function getMetaResourceById(resource: MetaResource, id: number) {
     case "feedback_types":
     case "organisations":
       return getReferenceRow(resource, id);
+    case "assigned_to":
+      return getAssignedToById(id);
     case "projects":
       return getProjectById(id);
     case "api_keys":
@@ -544,6 +699,8 @@ export function updateMetaResourceById(resource: MetaResource, id: number, paylo
     case "feedback_types":
     case "organisations":
       return updateReferenceRow(resource, id, payload);
+    case "assigned_to":
+      return updateAssignedToById(id, payload);
     case "projects":
       return updateProjectById(id, payload);
     case "api_keys":
@@ -557,6 +714,8 @@ export function deleteMetaResourceById(resource: MetaResource, id: number): bool
     case "feedback_types":
     case "organisations":
       return deleteReferenceRow(resource, id);
+    case "assigned_to":
+      return deleteAssignedToById(id);
     case "projects":
       return deleteProjectById(id);
     case "api_keys":

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import {
+  assignedToExists,
   deleteFeedbackById,
   getFeedbackById,
   getFeedbackStatusIdByName,
@@ -49,6 +50,34 @@ function resolveReferenceId(
   }
 
   return { ok: false as const, error: invalidMessage };
+}
+
+function resolveAssignedToValue(value: unknown) {
+  if (value === null) {
+    return { ok: true as const, id: null };
+  }
+
+  if (typeof value === "number" && Number.isInteger(value) && value > 0) {
+    return assignedToExists(value)
+      ? { ok: true as const, id: value }
+      : { ok: false as const, error: "Assigned-to entry not found" };
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "" || normalized === "null" || normalized === "unassigned") {
+      return { ok: true as const, id: null };
+    }
+
+    const numeric = Number(normalized);
+    if (Number.isInteger(numeric) && numeric > 0) {
+      return assignedToExists(numeric)
+        ? { ok: true as const, id: numeric }
+        : { ok: false as const, error: "Assigned-to entry not found" };
+    }
+  }
+
+  return { ok: false as const, error: "Invalid assigned_to value" };
 }
 
 export async function OPTIONS() {
@@ -124,6 +153,15 @@ export async function PATCH(
           return v1Json({ success: false, error: resolvedStatus.error }, { status: 400 });
         }
         result = updateFeedback(id, { feedback_status: resolvedStatus.id }, authResult.auth.projectId);
+        break;
+      }
+
+      case "assign": {
+        const resolvedAssignedTo = resolveAssignedToValue(value);
+        if (!resolvedAssignedTo.ok) {
+          return v1Json({ success: false, error: resolvedAssignedTo.error }, { status: 400 });
+        }
+        result = updateFeedback(id, { assigned_to: resolvedAssignedTo.id }, authResult.auth.projectId);
         break;
       }
 

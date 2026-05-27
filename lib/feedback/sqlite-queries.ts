@@ -82,6 +82,14 @@ export function getFeedbackTypeIdByName(value: string): number | null {
   return getReferenceIdByNameOrLabel("feedback_types", value);
 }
 
+export function assignedToExists(id: number): boolean {
+  const row = db
+    .prepare(`SELECT id FROM assigned_to WHERE id = ? LIMIT 1`)
+    .get(id) as { id: number } | undefined;
+
+  return Boolean(row);
+}
+
 export function getOrganisations(filters: Record<string, string> = {}): RefRow[] {
   const isDraft = filters.draft === "true";
   const isTrashed = filters.soft_delete === "true";
@@ -142,6 +150,10 @@ export function selectfeedback(
       f.project_id,
       f.email,
       f.submitter_ref,
+      f.assigned_to,
+      assignee.name AS assigned_to_name,
+      assignee.title AS assigned_to_title,
+      assignee.email AS assigned_to_email,
       f.organisation,
       o.name   AS organisation_name,
       f.page,
@@ -161,6 +173,7 @@ export function selectfeedback(
       f.updated_by,
       f.updated_at
     FROM feedback f
+    LEFT JOIN assigned_to        assignee ON f.assigned_to = assignee.id
     LEFT JOIN organisations     o  ON f.organisation   = o.id
     LEFT JOIN feedback_types    ft ON f.feedback_type   = ft.id
     LEFT JOIN feedback_status   fs ON f.feedback_status = fs.id
@@ -222,6 +235,10 @@ export function getFeedbackById(
          f.project_id,
          f.email,
          f.submitter_ref,
+         f.assigned_to,
+         assignee.name AS assigned_to_name,
+         assignee.title AS assigned_to_title,
+         assignee.email AS assigned_to_email,
          f.organisation,
          o.name   AS organisation_name,
          f.page,
@@ -241,6 +258,7 @@ export function getFeedbackById(
          f.updated_by,
          f.updated_at
        FROM feedback f
+       LEFT JOIN assigned_to      assignee ON f.assigned_to = assignee.id
        LEFT JOIN organisations     o  ON f.organisation   = o.id
        LEFT JOIN feedback_types    ft ON f.feedback_type   = ft.id
        LEFT JOIN feedback_status   fs ON f.feedback_status = fs.id
@@ -343,7 +361,7 @@ export function updateFeedback(
 
   const now = new Date().toISOString();
   const allowed = new Set([
-    "email", "organisation", "page", "feedback_type", "feedback_status",
+    "email", "organisation", "page", "feedback_type", "feedback_status", "assigned_to",
     "promote", "draft", "soft_delete", "updated_by",
   ]);
 

@@ -59,6 +59,15 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
             promote: { type: "boolean", default: false },
           },
         },
+        AssignedToPayload: {
+          type: "object",
+          required: ["name", "email"],
+          properties: {
+            name: { type: "string" },
+            title: { type: "string", nullable: true },
+            email: { type: "string", format: "email" },
+          },
+        },
       },
     },
     paths: {
@@ -222,10 +231,10 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
                   properties: {
                     action: {
                       type: "string",
-                      enum: ["type", "status", "close", "wontfix", "promote", "draft", "delete", "restore"],
+                      enum: ["type", "status", "assign", "close", "wontfix", "promote", "draft", "delete", "restore"],
                     },
                     value: {
-                      oneOf: [{ type: "integer" }, { type: "string" }, { type: "boolean" }],
+                      oneOf: [{ type: "integer" }, { type: "string" }, { type: "boolean" }, { type: "null" }],
                     },
                   },
                 },
@@ -501,7 +510,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
               required: true,
               schema: {
                 type: "string",
-                enum: ["feedback_status", "feedback_types", "organisations", "projects", "api_keys"],
+                enum: ["feedback_status", "feedback_types", "organisations", "assigned_to", "projects", "api_keys"],
               },
             },
             {
@@ -543,7 +552,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
               required: true,
               schema: {
                 type: "string",
-                enum: ["feedback_status", "feedback_types", "organisations", "projects", "api_keys"],
+                enum: ["feedback_status", "feedback_types", "organisations", "assigned_to", "projects", "api_keys"],
               },
             },
             {
@@ -558,8 +567,13 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
             content: {
               "application/json": {
                 schema: {
-                  type: "object",
-                  additionalProperties: true,
+                  oneOf: [
+                    {
+                      type: "object",
+                      additionalProperties: true,
+                    },
+                    { $ref: "#/components/schemas/AssignedToPayload" },
+                  ],
                 },
               },
             },
@@ -580,7 +594,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
               required: true,
               schema: {
                 type: "string",
-                enum: ["feedback_status", "feedback_types", "organisations", "projects", "api_keys"],
+                enum: ["feedback_status", "feedback_types", "organisations", "assigned_to", "projects", "api_keys"],
               },
             },
             {
@@ -611,7 +625,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
               required: true,
               schema: {
                 type: "string",
-                enum: ["feedback_status", "feedback_types", "organisations", "projects", "api_keys"],
+                enum: ["feedback_status", "feedback_types", "organisations", "assigned_to", "projects", "api_keys"],
               },
             },
             {
@@ -632,8 +646,20 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
             content: {
               "application/json": {
                 schema: {
-                  type: "object",
-                  additionalProperties: true,
+                  oneOf: [
+                    {
+                      type: "object",
+                      additionalProperties: true,
+                    },
+                    {
+                      type: "object",
+                      properties: {
+                        name: { type: "string" },
+                        title: { type: "string", nullable: true },
+                        email: { type: "string", format: "email" },
+                      },
+                    },
+                  ],
                 },
               },
             },
@@ -653,7 +679,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
               required: true,
               schema: {
                 type: "string",
-                enum: ["feedback_status", "feedback_types", "organisations", "projects", "api_keys"],
+                enum: ["feedback_status", "feedback_types", "organisations", "assigned_to", "projects", "api_keys"],
               },
             },
             {

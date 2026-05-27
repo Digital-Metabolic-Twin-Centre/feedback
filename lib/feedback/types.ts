@@ -3,6 +3,10 @@ export interface FeedbackData {
   project_id?: number | null;
   email: string | null;
   submitter_ref: string | null;
+  assigned_to?: number | null;
+  assigned_to_name?: string | null;
+  assigned_to_title?: string | null;
+  assigned_to_email?: string | null;
   organisation: number;
   organisation_name?: string | null;
   page: string | null;
