@@ -231,6 +231,18 @@ To add a future schema change:
 3. Run `npm run migrate:sqlite`.
 4. Add or update tests covering the new shape.
 
+You can generate the next numbered migration file automatically with:
+
+```bash
+npm run migration:create -- add-feedback-priority
+```
+
+If you change your mind before commit, you can remove a generated migration by name or filename:
+
+```bash
+npm run migration:remove -- add-feedback-priority
+```
+
 If you want a pinned release instead of `latest`, use a version tag such as:
 
 ```bash

@@ -10,6 +10,8 @@
     "migrate:sqlite": "node scripts/migrate-sqlite.mjs",
     "migrate:sqlite-seed": "node scripts/migrate-sqlite.mjs --seed",
     "migrate:sqlite-fresh": "node scripts/migrate-sqlite.mjs --fresh",
+    "migration:create": "node scripts/create-sqlite-migration.mjs",
+    "migration:remove": "node scripts/remove-sqlite-migration.mjs",
     "test": "jest --runInBand",
     "test:watch": "jest --watch"
   },

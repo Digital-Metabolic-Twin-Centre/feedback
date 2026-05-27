@@ -100,6 +100,18 @@ When changing schema:
 5. Keep reads/writes compatible with both pre- and post-migration code during rollout.
 6. Let [scripts/migrate-sqlite.mjs](./scripts/migrate-sqlite.mjs) or app startup apply it.
 
+To generate the next numbered migration scaffold automatically:
+
+```bash
+npm run migration:create -- add-feedback-priority
+```
+
+If you want to discard a generated migration before commit:
+
+```bash
+npm run migration:remove -- add-feedback-priority
+```
+
 Example pattern:
 
 ```ts
