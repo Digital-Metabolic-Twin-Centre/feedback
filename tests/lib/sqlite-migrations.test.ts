@@ -5,6 +5,7 @@ import { rollbackLastSqliteMigration, runSqliteMigrations } from "@/lib/sqlite-m
 
 describe("SQLite migrations", () => {
   const dbFile = path.resolve(process.cwd(), "data/feedback-migrations-test.db");
+  const createMigrationScript = path.resolve(process.cwd(), "scripts/create-sqlite-migration.mjs");
 
   afterEach(() => {
     if (fs.existsSync(dbFile)) {
@@ -261,5 +262,13 @@ describe("SQLite migrations", () => {
     ]);
 
     db.close();
+  });
+
+  test("migrate:create scaffolds both up and down functions", () => {
+    const scriptSource = fs.readFileSync(createMigrationScript, "utf8");
+
+    expect(scriptSource).toContain("up(db) {");
+    expect(scriptSource).toContain("down(db) {");
+    expect(scriptSource).toContain("-- Write your rollback here.");
   });
 });

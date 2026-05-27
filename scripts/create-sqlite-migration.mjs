@@ -68,45 +68,64 @@ function updateIndexFile(fileName, identifier) {
   fs.writeFileSync(INDEX_FILE, updated);
 }
 
-const rawName = process.argv.slice(2).join(" ").trim();
-
-if (!rawName) {
-  console.error("Usage: npm run migrate:create -- <migration-name>");
-  process.exit(1);
-}
-
-const slug = toSlug(rawName);
-
-if (!slug) {
-  console.error("Migration name must contain at least one letter or number.");
-  process.exit(1);
-}
-
-const number = getNextMigrationNumber();
-const fileName = `${number}-${slug}.mjs`;
-const filePath = path.join(MIGRATIONS_DIR, fileName);
-const identifier = toIdentifier(slug);
-const migrationId = `${number}_${slug.replace(/-/g, "_")}`;
-
-if (fs.existsSync(filePath)) {
-  console.error(`Migration already exists: ${fileName}`);
-  process.exit(1);
-}
-
-const fileContents = `const ${identifier} = {
+export function buildMigrationFileContents({ identifier, migrationId, description }) {
+  return `const ${identifier} = {
   id: "${migrationId}",
-  description: "${rawName}",
+  description: "${description}",
   up(db) {
     db.exec(\`
       -- Write your migration here.
+    \`);
+  },
+  down(db) {
+    db.exec(\`
+      -- Write your rollback here.
     \`);
   },
 };
 
 export default ${identifier};
 `;
+}
 
-fs.writeFileSync(filePath, fileContents);
-updateIndexFile(fileName, identifier);
+function main() {
+  const rawName = process.argv.slice(2).join(" ").trim();
 
-console.log(`Created migrate: lib/sqlite-migrations/${fileName}`);
+  if (!rawName) {
+    console.error("Usage: npm run migrate:create -- <migration-name>");
+    process.exit(1);
+  }
+
+  const slug = toSlug(rawName);
+
+  if (!slug) {
+    console.error("Migration name must contain at least one letter or number.");
+    process.exit(1);
+  }
+
+  const number = getNextMigrationNumber();
+  const fileName = `${number}-${slug}.mjs`;
+  const filePath = path.join(MIGRATIONS_DIR, fileName);
+  const identifier = toIdentifier(slug);
+  const migrationId = `${number}_${slug.replace(/-/g, "_")}`;
+
+  if (fs.existsSync(filePath)) {
+    console.error(`Migration already exists: ${fileName}`);
+    process.exit(1);
+  }
+
+  const fileContents = buildMigrationFileContents({
+    identifier,
+    migrationId,
+    description: rawName,
+  });
+
+  fs.writeFileSync(filePath, fileContents);
+  updateIndexFile(fileName, identifier);
+
+  console.log(`Created migrate: lib/sqlite-migrations/${fileName}`);
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}

@@ -36,7 +36,7 @@ function removeFromIndexFile(fileName) {
   const importMatch = indexSource.match(new RegExp(`import\\s+(\\w+)\\s+from\\s+"\\./${fileName.replace(".", "\\.")}";`));
 
   if (!importMatch) {
-    throw new Error(`Could not find import for ${fileName} in lib/sqlite-migrations/index.mjs`);
+    return false;
   }
 
   const identifier = importMatch[1];
@@ -50,6 +50,7 @@ function removeFromIndexFile(fileName) {
   }
 
   fs.writeFileSync(INDEX_FILE, withoutEntry);
+  return true;
 }
 
 const rawName = process.argv.slice(2).join(" ").trim();
@@ -66,7 +67,11 @@ if (!fileName) {
   process.exit(1);
 }
 
-removeFromIndexFile(fileName);
+const removedFromIndex = removeFromIndexFile(fileName);
 fs.unlinkSync(path.join(MIGRATIONS_DIR, fileName));
 
 console.log(`Removed migrate: lib/sqlite-migrations/${fileName}`);
+
+if (!removedFromIndex) {
+  console.warn(`Warning: ${fileName} was not registered in lib/sqlite-migrations/index.mjs`);
+}
