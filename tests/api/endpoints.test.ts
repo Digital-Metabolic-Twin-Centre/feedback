@@ -134,6 +134,7 @@ describe("Headless API endpoints", () => {
 
     expect(names).toEqual(
       expect.arrayContaining([
+        "assigned_to",
         "gitlab_issue_id",
         "gitlab_issue_url",
         "github_issue_id",
@@ -149,7 +150,26 @@ describe("Headless API endpoints", () => {
       .all() as Array<{ id: string }>;
 
     expect(migrations).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: "0001_baseline" })]),
+      expect.arrayContaining([
+        expect.objectContaining({ id: "0001_baseline" }),
+        expect.objectContaining({ id: "0002_create_assigned_to" }),
+        expect.objectContaining({ id: "0003_add_feedback_assigned_to" }),
+      ]),
+    );
+  });
+
+  test("assigned_to table exists with nullable title", () => {
+    const columns = db.prepare("PRAGMA table_info(assigned_to)").all() as Array<{
+      name: string;
+      notnull: number;
+    }>;
+
+    expect(columns).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "name", notnull: 1 }),
+        expect.objectContaining({ name: "title", notnull: 0 }),
+        expect.objectContaining({ name: "email", notnull: 1 }),
+      ]),
     );
   });
 

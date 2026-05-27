@@ -126,6 +126,10 @@ describe("SQLite migrations", () => {
     const migrationIds = db
       .prepare("SELECT id FROM schema_migrations ORDER BY id ASC")
       .all() as Array<{ id: string }>;
+    const assignedToColumns = db.prepare("PRAGMA table_info(assigned_to)").all() as Array<{
+      name: string;
+      notnull: number;
+    }>;
     const feedbackColumns = db.prepare("PRAGMA table_info(feedback)").all() as Array<{ name: string }>;
     const projectColumns = db.prepare("PRAGMA table_info(projects)").all() as Array<{ name: string }>;
     const defaultProject = db
@@ -139,9 +143,27 @@ describe("SQLite migrations", () => {
         github_issue_url: string | null;
       };
 
-    expect(migrationIds).toEqual([{ id: "0001_baseline" }]);
+    expect(migrationIds).toEqual([
+      { id: "0001_baseline" },
+      { id: "0002_create_assigned_to" },
+      { id: "0003_add_feedback_assigned_to" },
+    ]);
+    expect(assignedToColumns).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "name", notnull: 1 }),
+        expect.objectContaining({ name: "title", notnull: 0 }),
+        expect.objectContaining({ name: "email", notnull: 1 }),
+      ]),
+    );
     expect(feedbackColumns.map((column) => column.name)).toEqual(
-      expect.arrayContaining(["project_id", "initial_message", "github_issue_id", "github_issue_url", "order"]),
+      expect.arrayContaining([
+        "project_id",
+        "initial_message",
+        "github_issue_id",
+        "github_issue_url",
+        "assigned_to",
+        "order",
+      ]),
     );
     expect(projectColumns.map((column) => column.name)).toContain("order");
     expect(defaultProject?.id).toBeGreaterThan(0);
