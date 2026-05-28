@@ -264,6 +264,30 @@ describe("SQLite migrations", () => {
     db.close();
   });
 
+  test("is idempotent when schema_migrations already contains entries", () => {
+    fs.mkdirSync(path.dirname(dbFile), { recursive: true });
+    const db = new Database(dbFile);
+
+    runSqliteMigrations(db, { logger: null });
+
+    const firstRunIds = db
+      .prepare("SELECT id FROM schema_migrations ORDER BY id ASC")
+      .all() as Array<{ id: string }>;
+    const firstRunCount = firstRunIds.length;
+
+    runSqliteMigrations(db, { logger: null });
+
+    const secondRunIds = db
+      .prepare("SELECT id FROM schema_migrations ORDER BY id ASC")
+      .all() as Array<{ id: string }>;
+    const secondRunCount = secondRunIds.length;
+
+    expect(secondRunCount).toBe(firstRunCount);
+    expect(secondRunIds).toEqual(firstRunIds);
+
+    db.close();
+  });
+
   test("migrate:create scaffolds both up and down functions", () => {
     const scriptSource = fs.readFileSync(createMigrationScript, "utf8");
 
