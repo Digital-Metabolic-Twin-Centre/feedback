@@ -99,7 +99,7 @@ describe("feedback route", () => {
     expect(insertFeedback).not.toHaveBeenCalled();
   });
 
-  test("POST returns 201 and skips thread insert for empty initial_message", async () => {
+  test("POST returns 400 for empty initial_message", async () => {
     const insertFeedback = jest.fn().mockReturnValue({ insertedId: 77 });
     const insertThreadMessage = jest.fn();
     const notifyfeedbackubmitted = jest.fn().mockResolvedValue(undefined);
@@ -140,12 +140,10 @@ describe("feedback route", () => {
       })
     );
 
-    expect(response.status).toBe(201);
-    expect(insertFeedback).toHaveBeenCalled();
+    expect(response.status).toBe(400);
+    expect(insertFeedback).not.toHaveBeenCalled();
     expect(insertThreadMessage).not.toHaveBeenCalled();
-    expect(notifyfeedbackubmitted).toHaveBeenCalledWith(
-      expect.objectContaining({ feedbackId: 77, submittedByEmail: "user@example.com", page: null })
-    );
+    expect(notifyfeedbackubmitted).not.toHaveBeenCalled();
   });
 
   test("POST inserts initial thread message and absorbs notification promise rejection", async () => {
@@ -203,13 +201,7 @@ describe("feedback route", () => {
 
   test("POST returns 502 when promotion sync fails with PlatformSyncError", async () => {
     const insertFeedback = jest.fn().mockReturnValue({ insertedId: 123 });
-    const syncPromotedFeedbackToAvailablePlatforms = jest.fn().mockImplementation(() => {
-      const error = new Error("Sync failed");
-      (error as Error & { failures: unknown[]; partialResults: unknown[] }).failures = [{ platform: "github" }];
-      (error as Error & { failures: unknown[]; partialResults: unknown[] }).partialResults = [{ platform: "gitlab" }];
-      throw error;
-    });
-    class PlatformSyncError extends Error {
+     class PlatformSyncError extends Error {
       failures: unknown[];
       partialResults: unknown[];
 
@@ -251,6 +243,7 @@ describe("feedback route", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           email: "promote@example.com",
+          initial_message: "Please promote this",
           promote: true,
           draft: false,
         }),
@@ -297,7 +290,7 @@ describe("feedback route", () => {
       req("http://localhost/api/v1/feedback", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: "user@example.com" }),
+        body: JSON.stringify({ email: "user@example.com", initial_message: "Created from portal" }),
       })
     );
 
@@ -334,7 +327,7 @@ describe("feedback route", () => {
       req("http://localhost/api/v1/feedback", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: "user@example.com", draft: true }),
+        body: JSON.stringify({ email: "user@example.com", initial_message: "Created from portal", draft: true }),
       })
     );
 
@@ -375,6 +368,7 @@ describe("feedback route", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           email: "draft@example.com",
+          initial_message: "Draft only",
           draft: true,
           promote: false,
         }),
