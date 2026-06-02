@@ -47,7 +47,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
       schemas: {
         FeedbackPayload: {
           type: "object",
-          required: ["email"],
+          required: ["email", "initial_message"],
           properties: {
             email: { type: "string", format: "email" },
             assigned_to: { type: "integer", nullable: true },
@@ -55,7 +55,7 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
             page: { type: "string", nullable: true },
             feedback_type: { type: "integer", nullable: true },
             feedback_status: { type: "integer", nullable: true },
-            initial_message: { type: "string", nullable: true },
+            initial_message: { type: "string", minLength: 1 },
             draft: { type: "boolean", default: false },
             promote: { type: "boolean", default: false },
           },

@@ -12,7 +12,7 @@ const feedbackPayloadSchema = z.object({
   page: z.string().max(500).optional().nullable(),
   feedback_type: z.coerce.number().int().positive().optional().nullable(),
   feedback_status: z.coerce.number().int().positive().optional().nullable(),
-  initial_message: z.string().max(12000).optional().nullable(),
+  initial_message: z.string().trim().min(1).max(12000),
   draft: z.boolean().optional(),
   promote: z.boolean().optional(),
 });
@@ -48,15 +48,12 @@ export async function POST(req: NextRequest) {
       updated_by: payload.email,
     });
 
-    const initialMessage = payload.initial_message?.trim();
-    if (initialMessage) {
-      insertThreadMessage({
-        feedbackId: result.insertedId,
-        authorRole: "User",
-        message: initialMessage,
-        createdBy: payload.email,
-      });
-    }
+    insertThreadMessage({
+      feedbackId: result.insertedId,
+      authorRole: "User",
+      message: payload.initial_message,
+      createdBy: payload.email,
+    });
 
     if (payload.promote && !payload.draft) {
       await syncPromotedFeedbackToAvailablePlatforms(result.insertedId);

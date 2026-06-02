@@ -786,6 +786,30 @@ describe("Headless API endpoints", () => {
     expect(patchRes.status).toBe(200);
   });
 
+  test("feedback creation requires a non-empty initial message", async () => {
+    const createRes = await feedbackRoute.POST(
+      req("http://localhost/api/v1/feedback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": userApiKey,
+        },
+        body: JSON.stringify({
+          email: "user@example.com",
+          organisation: 1,
+          feedback_type: 1,
+          feedback_status: 1,
+          page: "/home",
+          initial_message: "   ",
+        }),
+      })
+    );
+
+    expect(createRes.status).toBe(400);
+    const createJson = await readJson(createRes);
+    expect(createJson.error).toBe("Invalid request payload.");
+  });
+
   test("auth and validation guards reject invalid access patterns", async () => {
     const invalidKeyRes = await feedbackRoute.POST(
       req("http://localhost/api/v1/feedback", {

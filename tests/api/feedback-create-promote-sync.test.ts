@@ -134,4 +134,60 @@ describe("feedback create promote sync", () => {
     expect(syncPromotedFeedbackToAvailablePlatforms).not.toHaveBeenCalled();
     expect(notifyfeedbackubmitted).not.toHaveBeenCalled();
   });
+
+  test("rejects empty initial_message values", async () => {
+    const insertFeedback = jest.fn();
+    const insertThreadMessage = jest.fn();
+    const notifyfeedbackubmitted = jest.fn().mockResolvedValue(undefined);
+    const syncPromotedFeedbackToAvailablePlatforms = jest.fn().mockResolvedValue([]);
+
+    jest.doMock("@/lib/feedback/sqlite-queries", () => ({
+      insertFeedback,
+      insertThreadMessage,
+      selectfeedback: jest.fn(),
+    }));
+    jest.doMock("@/lib/feedback-notifications", () => ({
+      notifyfeedbackubmitted,
+    }));
+    jest.doMock("@/lib/api-v1", () => ({
+      authenticateApiKey: jest.fn().mockResolvedValue({
+        ok: true,
+        auth: {
+          projectId: 7,
+          projectSlug: "default",
+          projectName: "Default",
+        },
+      }),
+      requireAdmin: jest.fn(),
+      v1Json: (body: unknown, init?: ResponseInit) =>
+        Response.json(body, { status: init?.status ?? 200 }),
+      v1PreflightResponse: jest.fn(),
+    }));
+    jest.doMock("@/lib/promoted-feedback-sync", () => ({
+      PlatformSyncError: class PlatformSyncError extends Error {},
+      syncPromotedFeedbackToAvailablePlatforms,
+    }));
+
+    const feedbackRoute = await import("@/app/api/v1/feedback/route");
+
+    const res = await feedbackRoute.POST(
+      req("http://localhost/api/v1/feedback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": "test-key",
+        },
+        body: JSON.stringify({
+          email: "blank@example.com",
+          initial_message: "   ",
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    expect(insertFeedback).not.toHaveBeenCalled();
+    expect(insertThreadMessage).not.toHaveBeenCalled();
+    expect(syncPromotedFeedbackToAvailablePlatforms).not.toHaveBeenCalled();
+    expect(notifyfeedbackubmitted).not.toHaveBeenCalled();
+  });
 });
