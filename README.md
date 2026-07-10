@@ -70,6 +70,7 @@ These routes require `x-api-key`. Access is scoped to the project attached to th
 - `PATCH /api/v1/admin/feedback/:id`
 - `GET /api/v1/admin/feedback/:id/messages`
 - `POST /api/v1/admin/feedback/:id/messages`
+- `PATCH /api/v1/admin/feedback/:id/messages`
 
 These routes require an API key created with `isAdmin: true`.
 
@@ -89,6 +90,7 @@ Feedback creation and thread replies are separate operations.
 - If `initial_message` is supplied during creation, it is inserted as the first thread message with author role `User`.
 - `POST /api/v1/feedback/:id` adds a later user follow-up message to the same thread.
 - `POST /api/v1/admin/feedback/:id/messages` adds an admin reply.
+- `PATCH /api/v1/admin/feedback/:id/messages` updates an existing thread message by `messageId`.
 - Closed feedback cannot accept new replies.
 - Replies on promoted feedback are synced to every configured issue platform.
 
@@ -509,6 +511,15 @@ curl -X POST http://localhost:4001/api/v1/admin/feedback/1/messages \
   -H "Content-Type: application/json" \
   -H "x-api-key: $ADMIN_API_KEY" \
   -d '{"message":"Thanks, this is now being worked on."}'
+```
+
+Update a thread message:
+
+```bash
+curl -X PATCH http://localhost:4001/api/v1/admin/feedback/1/messages \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $ADMIN_API_KEY" \
+  -d '{"messageId":2,"message":"Updated reply text."}'
 ```
 
 ## Testing GitHub Sync

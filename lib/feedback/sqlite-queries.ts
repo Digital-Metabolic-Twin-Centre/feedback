@@ -584,6 +584,47 @@ export function insertThreadMessage(input: {
   })();
 }
 
+export function updateThreadMessage(input: {
+  feedbackId: number;
+  messageId: number;
+  message: string;
+  updatedBy: string;
+  projectId?: number;
+}): { rowCount: number } {
+  const now = new Date().toISOString();
+
+  const rowCount = db.transaction(() => {
+    const result = db.prepare(
+      `UPDATE feedback_messages
+       SET message = ?, updated_by = ?, updated_at = ?
+       WHERE id = ?
+         AND feedback_id = ?
+         AND soft_delete = 0
+         AND EXISTS (
+           SELECT 1 FROM feedback f
+           WHERE f.id = feedback_messages.feedback_id
+           ${input.projectId ? "AND f.project_id = ?" : ""}
+         )`
+    ).run(
+      ...(
+        input.projectId
+          ? [input.message, input.updatedBy, now, input.messageId, input.feedbackId, input.projectId]
+          : [input.message, input.updatedBy, now, input.messageId, input.feedbackId]
+      )
+    ).changes;
+
+    if (result > 0) {
+      db.prepare(
+        `UPDATE feedback SET updated_by = ?, updated_at = ? WHERE id = ?`
+      ).run(input.updatedBy, now, input.feedbackId);
+    }
+
+    return result;
+  })();
+
+  return { rowCount };
+}
+
 //  GitLab sync helpers 
 
 export type FeedbackForGitLab = {

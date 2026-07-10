@@ -763,6 +763,38 @@ describe("Headless API endpoints", () => {
       { params: Promise.resolve({ id: String(createdFeedbackId) }) }
     );
     expect(postMessageRes.status).toBe(201);
+    const postMessageJson = await readJson(postMessageRes);
+    const adminMessage = (postMessageJson.data as Array<{ id: number; author_role: string }>).find(
+      (message) => message.author_role === "Admin"
+    );
+    expect(adminMessage?.id).toEqual(expect.any(Number));
+
+    const updateMessageRes = await adminMessagesRoute.PATCH(
+      req(`http://localhost/api/v1/admin/feedback/${createdFeedbackId}/messages`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": adminApiKey,
+        },
+        body: JSON.stringify({
+          messageId: adminMessage?.id,
+          message: "Thanks, we are actively investigating.",
+          updatedBy: "support lead",
+        }),
+      }),
+      { params: Promise.resolve({ id: String(createdFeedbackId) }) }
+    );
+    expect(updateMessageRes.status).toBe(200);
+    const updateMessageJson = await readJson(updateMessageRes);
+    expect(updateMessageJson.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: adminMessage?.id,
+          message: "Thanks, we are actively investigating.",
+          updated_by: "support lead",
+        }),
+      ])
+    );
 
     const listMessagesRes = await adminMessagesRoute.GET(
       req(`http://localhost/api/v1/admin/feedback/${createdFeedbackId}/messages`, {

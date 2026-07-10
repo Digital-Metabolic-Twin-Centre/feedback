@@ -92,6 +92,15 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
             createdBy: { type: "string" },
           },
         },
+        AdminThreadMessageUpdatePayload: {
+          type: "object",
+          required: ["messageId", "message"],
+          properties: {
+            messageId: { type: "integer", minimum: 1 },
+            message: { type: "string", minLength: 1, maxLength: 12000 },
+            updatedBy: { type: "string" },
+          },
+        },
         ReferenceMetaPayload: {
           type: "object",
           required: ["name"],
@@ -416,6 +425,32 @@ export function feedbackOpenApiSpec(baseUrl?: string) {
           responses: {
             "201": { description: "Message added" },
             "409": { description: "Feedback closed" },
+          },
+        },
+        patch: {
+          tags: ["Admin Feedback"],
+          summary: "Update feedback thread message (admin key)",
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            apiKeyHeaderParameter,
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/AdminThreadMessageUpdatePayload" },
+              },
+            },
+          },
+          responses: {
+            "200": { description: "Message updated" },
+            "404": { description: "Feedback or message not found" },
           },
         },
       },

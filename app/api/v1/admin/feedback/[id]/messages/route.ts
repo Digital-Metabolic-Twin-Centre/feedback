@@ -4,6 +4,7 @@ import {
   getFeedbackById,
   getThreadMessages,
   insertThreadMessage,
+  updateThreadMessage,
 } from "@/lib/feedback/sqlite-queries";
 import {
   notifyFeedbackDistributionOfReply,
@@ -16,6 +17,16 @@ import { syncPromotedFeedbackToAvailablePlatforms } from "@/lib/promoted-feedbac
 const postSchema = z.object({
   message: z.string().min(1).max(12000),
   createdBy: z.string().min(1).optional(),
+});
+
+const patchSchema = z.object({
+  id: z.coerce.number().int().min(1).optional(),
+  messageId: z.coerce.number().int().min(1).optional(),
+  message: z.string().min(1).max(12000),
+  updatedBy: z.string().min(1).optional(),
+}).refine((payload) => payload.id || payload.messageId, {
+  message: "Message id is required.",
+  path: ["messageId"],
 });
 
 export async function OPTIONS() {
@@ -48,6 +59,64 @@ export async function GET(
     return v1Json({ success: true, data: messages });
   } catch (error) {
     logError(error, { operation: "v1/admin/feedback/messages GET", resource: req.url });
+    return v1Json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Internal server error",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const authResult = await authenticateApiKey(req);
+    if (!authResult.ok) return authResult.response;
+
+    const adminError = requireAdmin(authResult.auth);
+    if (adminError) return adminError;
+
+    const { id: idStr } = await params;
+    const feedbackId = Number(idStr);
+    if (!Number.isInteger(feedbackId) || feedbackId < 1) {
+      return v1Json({ success: false, error: "Invalid feedback id." }, { status: 400 });
+    }
+
+    const payload = await req.json().catch(() => ({}));
+    const parsed = patchSchema.safeParse(payload);
+    if (!parsed.success) {
+      return v1Json(
+        { success: false, error: "Invalid request payload.", issues: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const feedback = getFeedbackById(feedbackId, authResult.auth.projectId);
+    if (!feedback) {
+      return v1Json({ success: false, error: "Feedback not found for this project." }, { status: 404 });
+    }
+
+    const updatedBy = parsed.data.updatedBy?.trim() || `admin-key-${authResult.auth.keyId}`;
+    const result = updateThreadMessage({
+      feedbackId,
+      messageId: parsed.data.messageId ?? parsed.data.id ?? 0,
+      message: parsed.data.message.trim(),
+      updatedBy,
+      projectId: authResult.auth.projectId,
+    });
+
+    if (result.rowCount < 1) {
+      return v1Json({ success: false, error: "Message not found for this feedback." }, { status: 404 });
+    }
+
+    const messages = getThreadMessages(feedbackId, authResult.auth.projectId);
+    return v1Json({ success: true, data: messages });
+  } catch (error) {
+    logError(error, { operation: "v1/admin/feedback/messages PATCH", resource: req.url });
     return v1Json(
       {
         success: false,
