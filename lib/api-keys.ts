@@ -182,11 +182,11 @@ export function validateApiKey(rawKey: string): ApiKeyAuthContext | null {
       `SELECT
          k.id,
          k.project_id,
-         p.slug AS project_slug,
-         p.name AS project_name,
+         COALESCE(p.slug, '[orphaned]') AS project_slug,
+         COALESCE(p.name, '[Orphaned Project]') AS project_name,
          k.is_admin
        FROM api_keys k
-       JOIN projects p ON p.id = k.project_id
+       LEFT JOIN projects p ON p.id = k.project_id
        WHERE k.key_hash = ?
          AND k.soft_delete = 0
          AND k.draft = 0
@@ -248,10 +248,10 @@ export function rotateApiKeyById(keyId: number): {
          k.name,
          k."order",
          k.is_admin,
-         p.slug AS project_slug,
-         p.name AS project_name
+         COALESCE(p.slug, '[orphaned]') AS project_slug,
+         COALESCE(p.name, '[Orphaned Project]') AS project_name
        FROM api_keys k
-       JOIN projects p ON p.id = k.project_id
+       LEFT JOIN projects p ON p.id = k.project_id
        WHERE k.id = ? AND k.soft_delete = 0
        LIMIT 1`
     )
@@ -318,7 +318,9 @@ export function listApiKeys(filters?: {
   includeRevoked?: boolean;
 }): ApiKeySummary[] {
   const params: Array<string | number> = [];
-  const where: string[] = ["p.soft_delete = 0"];
+  // p.id IS NULL keeps keys whose project was deleted: NULL = 0 is never true,
+  // so without it an orphaned key silently drops out of the listing.
+  const where: string[] = ["(p.soft_delete = 0 OR p.id IS NULL)"];
 
   if (filters?.projectSlug?.trim()) {
     where.push("p.slug = ?");
@@ -334,8 +336,8 @@ export function listApiKeys(filters?: {
       `SELECT
          k.id,
          k.project_id,
-         p.slug AS project_slug,
-         p.name AS project_name,
+         COALESCE(p.slug, '[orphaned]') AS project_slug,
+         COALESCE(p.name, '[Orphaned Project]') AS project_name,
          k.name,
          k."order",
          k.key_prefix,
@@ -345,7 +347,7 @@ export function listApiKeys(filters?: {
          k.created_at,
          k.updated_at
        FROM api_keys k
-       JOIN projects p ON p.id = k.project_id
+       LEFT JOIN projects p ON p.id = k.project_id
        WHERE ${where.join(" AND ")}
        ORDER BY k."order" ASC, p.slug ASC, k.id DESC`
     )

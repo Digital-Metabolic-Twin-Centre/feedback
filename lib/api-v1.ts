@@ -60,6 +60,11 @@ export async function authenticateApiKey(req: NextRequest): Promise<
   return { ok: true, auth };
 }
 
+// Admin keys administer every project, so admin feedback routes deliberately
+// pass no project filter. Scoping them to the key's own project hides records
+// whenever a key and its data drift apart.
+export const ADMIN_ALL_PROJECTS: number | undefined = undefined;
+
 export function requireAdmin(auth: ApiKeyAuthContext): NextResponse | null {
   if (auth.isAdmin) return null;
   return v1Json({ success: false, error: "Admin API key is required." }, { status: 403 });
