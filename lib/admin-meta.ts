@@ -299,9 +299,17 @@ function updateAssignedToById(id: number, payload: unknown): AssignedToSummary |
   return getAssignedToById(id);
 }
 
-function deleteAssignedToById(id: number): boolean {
+// assigned_to has no soft_delete column, so it stays a single-stage delete.
+function deleteAssignedToById(id: number): MetaDeleteResult {
+  const references = countReferences("feedback", "assigned_to", id);
+  if (references > 0) {
+    return {
+      error: `Cannot delete: still assigned to ${references} feedback record(s).`,
+    };
+  }
+
   const result = db.prepare(`DELETE FROM assigned_to WHERE id = ?`).run(id);
-  return result.changes > 0;
+  return result.changes > 0 ? { outcome: "hard_deleted" } : { error: "not_found" };
 }
 
 function listNotificationAudit(): NotificationAuditSummary[] {
@@ -528,6 +536,23 @@ function updateNotificationPreferenceById(id: number, payload: unknown): Notific
   return getNotificationPreferenceById(id);
 }
 
+function deleteApiKeyById(id: number): MetaDeleteResult {
+  const existing = getSoftDeleteState("api_keys", id);
+
+  if (!existing) {
+    return { error: "not_found" };
+  }
+
+  if (existing.soft_delete === 0) {
+    return revokeApiKeyById(id).success
+      ? { outcome: "soft_deleted" }
+      : { error: "not_found" };
+  }
+
+  db.prepare(`DELETE FROM api_keys WHERE id = ?`).run(id);
+  return { outcome: "hard_deleted" };
+}
+
 function deleteNotificationPreferenceById(id: number): boolean {
   const result = db.prepare(`DELETE FROM notification_preferences WHERE id = ?`).run(id);
   return result.changes > 0;
@@ -737,11 +762,62 @@ function updateReferenceRow(resource: keyof typeof referenceConfigs, id: number,
   return getReferenceRow(resource, id);
 }
 
-function deleteReferenceRow(resource: keyof typeof referenceConfigs, id: number): boolean {
-  const result = db
-    .prepare(`UPDATE ${referenceConfigs[resource].table} SET soft_delete = 1, updated_at = ? WHERE id = ?`)
+// Deleting is two-stage, mirroring deleteFeedbackById: an active row is moved
+// to trash, and only an already-trashed row is removed for good.
+export type MetaDeleteResult =
+  | { outcome: "soft_deleted" | "hard_deleted" }
+  | { error: string };
+
+// feedback columns pointing at each reference table, guarding the hard delete
+// against the FOREIGN KEY constraint those references would otherwise raise.
+const referenceUsageColumns = {
+  feedback_status: "feedback_status",
+  feedback_types: "feedback_type",
+  organisations: "organisation",
+} as const satisfies Record<keyof typeof referenceConfigs, string>;
+
+function countReferences(table: string, column: string, id: number): number {
+  return (
+    db.prepare(`SELECT COUNT(*) AS c FROM ${table} WHERE ${column} = ?`).get(id) as { c: number }
+  ).c;
+}
+
+function getSoftDeleteState(table: string, id: number): { soft_delete: number } | undefined {
+  return db
+    .prepare(`SELECT soft_delete FROM ${table} WHERE id = ? LIMIT 1`)
+    .get(id) as { soft_delete: number } | undefined;
+}
+
+function softDeleteRow(table: string, id: number): MetaDeleteResult {
+  db.prepare(`UPDATE ${table} SET soft_delete = 1, updated_at = ? WHERE id = ?`)
     .run(new Date().toISOString(), id);
-  return result.changes > 0;
+  return { outcome: "soft_deleted" };
+}
+
+function deleteReferenceRow(
+  resource: keyof typeof referenceConfigs,
+  id: number
+): MetaDeleteResult {
+  const table = referenceConfigs[resource].table;
+  const existing = getSoftDeleteState(table, id);
+
+  if (!existing) {
+    return { error: "not_found" };
+  }
+
+  if (existing.soft_delete === 0) {
+    return softDeleteRow(table, id);
+  }
+
+  const references = countReferences("feedback", referenceUsageColumns[resource], id);
+  if (references > 0) {
+    return {
+      error: `Cannot permanently delete: still used by ${references} feedback record(s).`,
+    };
+  }
+
+  db.prepare(`DELETE FROM ${table} WHERE id = ?`).run(id);
+  return { outcome: "hard_deleted" };
 }
 
 function getProjectById(id: number): ProjectSummary | null {
@@ -818,11 +894,35 @@ function updateProjectById(id: number, payload: unknown): ProjectSummary | null 
   return getProjectById(id);
 }
 
-function deleteProjectById(id: number): boolean {
-  const result = db
-    .prepare(`UPDATE projects SET soft_delete = 1, updated_at = ? WHERE id = ?`)
-    .run(new Date().toISOString(), id);
-  return result.changes > 0;
+function deleteProjectById(id: number): MetaDeleteResult {
+  const existing = getSoftDeleteState("projects", id);
+
+  if (!existing) {
+    return { error: "not_found" };
+  }
+
+  if (existing.soft_delete === 0) {
+    return softDeleteRow("projects", id);
+  }
+
+  const feedbackCount = countReferences("feedback", "project_id", id);
+  if (feedbackCount > 0) {
+    return {
+      error: `Cannot permanently delete: still used by ${feedbackCount} feedback record(s).`,
+    };
+  }
+
+  // api_keys cascades on project delete, so refuse rather than silently
+  // destroying keys the caller cannot see from here.
+  const keyCount = countReferences("api_keys", "project_id", id);
+  if (keyCount > 0) {
+    return {
+      error: `Cannot permanently delete: ${keyCount} API key(s) belong to this project. Delete them first.`,
+    };
+  }
+
+  db.prepare(`DELETE FROM projects WHERE id = ?`).run(id);
+  return { outcome: "hard_deleted" };
 }
 
 function getApiKeyById(id: number): ApiKeyDetail | null {
@@ -831,8 +931,8 @@ function getApiKeyById(id: number): ApiKeyDetail | null {
       `SELECT
          k.id,
          k.project_id,
-         p.slug AS project_slug,
-         p.name AS project_name,
+         COALESCE(p.slug, '[orphaned]') AS project_slug,
+         COALESCE(p.name, '[Orphaned Project]') AS project_name,
          k.name,
          k."order",
          k.key_prefix,
@@ -843,7 +943,7 @@ function getApiKeyById(id: number): ApiKeyDetail | null {
          k.created_at,
          k.updated_at
        FROM api_keys k
-       JOIN projects p ON p.id = k.project_id
+       LEFT JOIN projects p ON p.id = k.project_id
        WHERE k.id = ?
        LIMIT 1`
     )
@@ -1040,7 +1140,10 @@ export function updateMetaResourceById(resource: MetaResource, id: number, paylo
   }
 }
 
-export function deleteMetaResourceById(resource: MetaResource, id: number): boolean {
+export function deleteMetaResourceById(
+  resource: MetaResource,
+  id: number
+): MetaDeleteResult {
   switch (resource) {
     case "feedback_status":
     case "feedback_types":
@@ -1051,12 +1154,14 @@ export function deleteMetaResourceById(resource: MetaResource, id: number): bool
     case "notification_audit":
       return assertReadOnlyResource("notification_audit");
     case "notification_settings":
-      return false;
+      return { error: "not_found" };
     case "notification_preferences":
-      return deleteNotificationPreferenceById(id);
+      return deleteNotificationPreferenceById(id)
+        ? { outcome: "hard_deleted" }
+        : { error: "not_found" };
     case "projects":
       return deleteProjectById(id);
     case "api_keys":
-      return revokeApiKeyById(id).success;
+      return deleteApiKeyById(id);
   }
 }

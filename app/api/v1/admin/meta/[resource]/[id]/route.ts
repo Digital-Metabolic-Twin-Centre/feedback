@@ -104,12 +104,14 @@ export async function DELETE(
       return v1Json({ success: false, error: "Invalid resource id." }, { status: 400 });
     }
 
-    const deleted = deleteMetaResourceById(parsedResource.data, id);
-    if (!deleted) {
-      return v1Json({ success: false, error: "Resource not found." }, { status: 404 });
+    const result = deleteMetaResourceById(parsedResource.data, id);
+    if ("error" in result) {
+      return result.error === "not_found"
+        ? v1Json({ success: false, error: "Resource not found." }, { status: 404 })
+        : v1Json({ success: false, error: result.error }, { status: 409 });
     }
 
-    return v1Json({ success: true, deletedId: id });
+    return v1Json({ success: true, deletedId: id, deletion: result.outcome });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal server error";
     const status = message.toLowerCase().includes("read-only") ? 400 : 500;
