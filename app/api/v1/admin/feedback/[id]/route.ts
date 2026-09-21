@@ -5,10 +5,11 @@ import {
   getFeedbackById,
   getFeedbackStatusIdByName,
   getFeedbackTypeIdByName,
+  projectExists,
   updateFeedback,
 } from "@/lib/feedback/sqlite-queries";
 import { logError } from "@/lib/error-logger";
-import { authenticateApiKey, requireAdmin, v1Json, v1PreflightResponse } from "@/lib/api-v1";
+import { ADMIN_ALL_PROJECTS, authenticateApiKey, requireAdmin, v1Json, v1PreflightResponse } from "@/lib/api-v1";
 import {
   PlatformSyncError,
   syncPromotedFeedbackToAvailablePlatforms,
@@ -101,7 +102,7 @@ export async function GET(
       return v1Json({ success: false, error: "Invalid ID" }, { status: 400 });
     }
 
-    const feedback = getFeedbackById(id, authResult.auth.projectId);
+    const feedback = getFeedbackById(id, ADMIN_ALL_PROJECTS);
     if (!feedback) {
       return v1Json({ success: false, error: "Feedback not found for this project." }, { status: 404 });
     }
@@ -143,7 +144,7 @@ export async function PATCH(
         if (!resolvedType.ok) {
           return v1Json({ success: false, error: resolvedType.error }, { status: 400 });
         }
-        result = updateFeedback(id, { feedback_type: resolvedType.id }, authResult.auth.projectId);
+        result = updateFeedback(id, { feedback_type: resolvedType.id }, ADMIN_ALL_PROJECTS);
         break;
       }
 
@@ -152,7 +153,7 @@ export async function PATCH(
         if (!resolvedStatus.ok) {
           return v1Json({ success: false, error: resolvedStatus.error }, { status: 400 });
         }
-        result = updateFeedback(id, { feedback_status: resolvedStatus.id }, authResult.auth.projectId);
+        result = updateFeedback(id, { feedback_status: resolvedStatus.id }, ADMIN_ALL_PROJECTS);
         break;
       }
 
@@ -161,7 +162,7 @@ export async function PATCH(
         if (!resolvedAssignedTo.ok) {
           return v1Json({ success: false, error: resolvedAssignedTo.error }, { status: 400 });
         }
-        result = updateFeedback(id, { assigned_to: resolvedAssignedTo.id }, authResult.auth.projectId);
+        result = updateFeedback(id, { assigned_to: resolvedAssignedTo.id }, ADMIN_ALL_PROJECTS);
         break;
       }
 
@@ -170,9 +171,9 @@ export async function PATCH(
         if (closedStatusId === null) {
           return v1Json({ success: false, error: "Closed status not found" }, { status: 400 });
         }
-        result = updateFeedback(id, { feedback_status: closedStatusId }, authResult.auth.projectId);
+        result = updateFeedback(id, { feedback_status: closedStatusId }, ADMIN_ALL_PROJECTS);
         if (!("error" in result) && result.rowCount > 0) {
-          const feedback = getFeedbackById(id, authResult.auth.projectId);
+          const feedback = getFeedbackById(id, ADMIN_ALL_PROJECTS);
           if (feedback?.promote && !feedback.draft) {
             syncResults = await syncPromotedFeedbackToAvailablePlatforms(id);
           }
@@ -185,9 +186,9 @@ export async function PATCH(
         if (wontFixStatusId === null) {
           return v1Json({ success: false, error: "Won't Fix status not found" }, { status: 400 });
         }
-        result = updateFeedback(id, { feedback_status: wontFixStatusId }, authResult.auth.projectId);
+        result = updateFeedback(id, { feedback_status: wontFixStatusId }, ADMIN_ALL_PROJECTS);
         if (!("error" in result) && result.rowCount > 0) {
-          const feedback = getFeedbackById(id, authResult.auth.projectId);
+          const feedback = getFeedbackById(id, ADMIN_ALL_PROJECTS);
           if (feedback?.promote && !feedback.draft) {
             syncResults = await syncPromotedFeedbackToAvailablePlatforms(id);
           }
@@ -200,7 +201,7 @@ export async function PATCH(
         if (!promoteValue.ok) {
           return v1Json({ success: false, error: promoteValue.error }, { status: 400 });
         }
-        result = updateFeedback(id, { promote: promoteValue.value }, authResult.auth.projectId);
+        result = updateFeedback(id, { promote: promoteValue.value }, ADMIN_ALL_PROJECTS);
         if (!("error" in result) && result.rowCount > 0 && promoteValue.value) {
           syncResults = await syncPromotedFeedbackToAvailablePlatforms(id);
         }
@@ -212,9 +213,9 @@ export async function PATCH(
         if (!draftValue.ok) {
           return v1Json({ success: false, error: draftValue.error }, { status: 400 });
         }
-        result = updateFeedback(id, { draft: draftValue.value }, authResult.auth.projectId);
+        result = updateFeedback(id, { draft: draftValue.value }, ADMIN_ALL_PROJECTS);
         if (!("error" in result) && result.rowCount > 0) {
-          const feedback = getFeedbackById(id, authResult.auth.projectId);
+          const feedback = getFeedbackById(id, ADMIN_ALL_PROJECTS);
           if (feedback?.promote && !feedback.draft) {
             syncResults = await syncPromotedFeedbackToAvailablePlatforms(id);
           }
@@ -222,12 +223,24 @@ export async function PATCH(
         break;
       }
 
+      case "project": {
+        const projectId = typeof value === "string" ? Number(value) : value;
+        if (!Number.isInteger(projectId) || (projectId as number) < 1) {
+          return v1Json({ success: false, error: "Invalid project value" }, { status: 400 });
+        }
+        if (!projectExists(projectId as number)) {
+          return v1Json({ success: false, error: "Project not found" }, { status: 400 });
+        }
+        result = updateFeedback(id, { project_id: projectId }, ADMIN_ALL_PROJECTS);
+        break;
+      }
+
       case "delete":
-        result = updateFeedback(id, { soft_delete: true }, authResult.auth.projectId);
+        result = updateFeedback(id, { soft_delete: true }, ADMIN_ALL_PROJECTS);
         break;
 
       case "restore":
-        result = updateFeedback(id, { soft_delete: false }, authResult.auth.projectId);
+        result = updateFeedback(id, { soft_delete: false }, ADMIN_ALL_PROJECTS);
         break;
 
       default:
@@ -281,7 +294,7 @@ export async function DELETE(
       return v1Json({ success: false, error: "Invalid ID" }, { status: 400 });
     }
 
-    const result = deleteFeedbackById(id, authResult.auth.projectId);
+    const result = deleteFeedbackById(id, ADMIN_ALL_PROJECTS);
     if ("error" in result) {
       return v1Json({ success: false, error: "Feedback not found for this project." }, { status: 404 });
     }

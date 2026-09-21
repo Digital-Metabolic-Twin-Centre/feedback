@@ -184,6 +184,21 @@ export function getOrganisations(filters: Record<string, string> = {}): RefRow[]
 
 //  feedback 
 
+// Feedback whose project no longer exists belongs to nobody, so it stays
+// reachable by admins instead of being filtered into oblivion with its project.
+// NOT EXISTS (rather than NOT IN) also covers a NULL project_id.
+function projectScopeSql(column = "f.project_id") {
+  return `(${column} = ? OR NOT EXISTS (SELECT 1 FROM projects p2 WHERE p2.id = ${column}))`;
+}
+
+const PROJECT_SCOPE_SQL = projectScopeSql();
+
+export function projectExists(projectId: number): boolean {
+  return Boolean(
+    db.prepare(`SELECT 1 FROM projects WHERE id = ? LIMIT 1`).get(projectId)
+  );
+}
+
 export function selectfeedback(
   filters: Record<string, string> = {},
   groups: string[] = [],
@@ -213,7 +228,7 @@ export function selectfeedback(
   }
 
   if (projectId) {
-    whereClauses.push(`f.project_id = ?`);
+    whereClauses.push(PROJECT_SCOPE_SQL);
     params.push(projectId);
   }
 
@@ -223,6 +238,7 @@ export function selectfeedback(
     SELECT
       f.id,
       f.project_id,
+      COALESCE(p.name, '[Orphaned Project]') AS project_name,
       f.email,
       f.submitter_ref,
       f.assigned_to,
@@ -248,6 +264,7 @@ export function selectfeedback(
       f.updated_by,
       f.updated_at
     FROM feedback f
+    LEFT JOIN projects          p  ON f.project_id = p.id
     LEFT JOIN assigned_to        assignee ON f.assigned_to = assignee.id
     LEFT JOIN organisations     o  ON f.organisation   = o.id
     LEFT JOIN feedback_types    ft ON f.feedback_type   = ft.id
@@ -308,6 +325,7 @@ export function getFeedbackById(
       `SELECT
          f.id,
          f.project_id,
+         COALESCE(p.name, '[Orphaned Project]') AS project_name,
          f.email,
          f.submitter_ref,
          f.assigned_to,
@@ -333,6 +351,7 @@ export function getFeedbackById(
          f.updated_by,
          f.updated_at
        FROM feedback f
+       LEFT JOIN projects         p  ON f.project_id = p.id
        LEFT JOIN assigned_to      assignee ON f.assigned_to = assignee.id
        LEFT JOIN organisations     o  ON f.organisation   = o.id
        LEFT JOIN feedback_types    ft ON f.feedback_type   = ft.id
@@ -355,7 +374,7 @@ export function getFeedbackById(
              LIMIT 1
            )
        ) latest_msg ON latest_msg.feedback_id = f.id
-       WHERE f.id = ? ${projectId ? "AND f.project_id = ?" : ""}
+       WHERE f.id = ? ${projectId ? `AND ${PROJECT_SCOPE_SQL}` : ""}
        LIMIT 1`
     )
     .get(...(projectId ? [feedbackId, projectId] : [feedbackId])) as FeedbackData | undefined;
@@ -443,7 +462,7 @@ export function updateFeedback(
   const now = new Date().toISOString();
   const allowed = new Set([
     "email", "organisation", "page", "feedback_type", "feedback_status", "assigned_to",
-    "promote", "draft", "soft_delete", "updated_by",
+    "promote", "draft", "soft_delete", "updated_by", "project_id",
   ]);
 
   const setClauses: string[] = [];
@@ -474,7 +493,9 @@ export function updateFeedback(
 
   const result = db
     .prepare(
-      `UPDATE feedback SET ${setClauses.join(", ")} WHERE id = ? ${projectId ? "AND project_id = ?" : ""}`
+      `UPDATE feedback SET ${setClauses.join(", ")} WHERE id = ? ${
+        projectId ? `AND ${projectScopeSql("project_id")}` : ""
+      }`
     )
     .run(...values);
 
@@ -489,7 +510,7 @@ export function deleteFeedbackById(
     .prepare(
       `SELECT id, soft_delete
        FROM feedback
-       WHERE id = ? ${projectId ? "AND project_id = ?" : ""}
+       WHERE id = ? ${projectId ? `AND ${projectScopeSql("project_id")}` : ""}
        LIMIT 1`
     )
     .get(...(projectId ? [id, projectId] : [id])) as { id: number; soft_delete: number } | undefined;
@@ -503,7 +524,7 @@ export function deleteFeedbackById(
     db.prepare(
       `UPDATE feedback
        SET soft_delete = 1, updated_at = ?
-       WHERE id = ? ${projectId ? "AND project_id = ?" : ""}`
+       WHERE id = ? ${projectId ? `AND ${projectScopeSql("project_id")}` : ""}`
     ).run(...(projectId ? [now, id, projectId] : [now, id]));
 
     return { outcome: "soft_deleted" };
@@ -511,7 +532,7 @@ export function deleteFeedbackById(
 
   db.transaction(() => {
     db.prepare(`DELETE FROM feedback_messages WHERE feedback_id = ?`).run(id);
-    db.prepare(`DELETE FROM feedback WHERE id = ? ${projectId ? "AND project_id = ?" : ""}`)
+    db.prepare(`DELETE FROM feedback WHERE id = ? ${projectId ? `AND ${projectScopeSql("project_id")}` : ""}`)
       .run(...(projectId ? [id, projectId] : [id]));
   })();
 
@@ -548,7 +569,7 @@ export function getThreadMessages(
          AND EXISTS (
            SELECT 1 FROM feedback f
            WHERE f.id = m.feedback_id
-           ${projectId ? "AND f.project_id = ?" : ""}
+           ${projectId ? `AND ${PROJECT_SCOPE_SQL}` : ""}
          )
        ORDER BY created_at ASC, id ASC`
     )

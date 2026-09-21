@@ -10,7 +10,7 @@ import {
   notifyFeedbackDistributionOfReply,
   notifyfeedbackubmitterOfReply,
 } from "@/lib/feedback-notifications";
-import { authenticateApiKey, requireAdmin, v1Json, v1PreflightResponse } from "@/lib/api-v1";
+import { ADMIN_ALL_PROJECTS, authenticateApiKey, requireAdmin, v1Json, v1PreflightResponse } from "@/lib/api-v1";
 import { logError } from "@/lib/error-logger";
 import { syncPromotedFeedbackToAvailablePlatforms } from "@/lib/promoted-feedback-sync";
 
@@ -50,12 +50,12 @@ export async function GET(
       return v1Json({ success: false, error: "Invalid feedback id." }, { status: 400 });
     }
 
-    const feedback = getFeedbackById(feedbackId, authResult.auth.projectId);
+    const feedback = getFeedbackById(feedbackId, ADMIN_ALL_PROJECTS);
     if (!feedback) {
       return v1Json({ success: false, error: "Feedback not found for this project." }, { status: 404 });
     }
 
-    const messages = getThreadMessages(feedbackId, authResult.auth.projectId);
+    const messages = getThreadMessages(feedbackId, ADMIN_ALL_PROJECTS);
     return v1Json({ success: true, data: messages });
   } catch (error) {
     logError(error, { operation: "v1/admin/feedback/messages GET", resource: req.url });
@@ -95,7 +95,7 @@ export async function PATCH(
       );
     }
 
-    const feedback = getFeedbackById(feedbackId, authResult.auth.projectId);
+    const feedback = getFeedbackById(feedbackId, ADMIN_ALL_PROJECTS);
     if (!feedback) {
       return v1Json({ success: false, error: "Feedback not found for this project." }, { status: 404 });
     }
@@ -106,14 +106,14 @@ export async function PATCH(
       messageId: parsed.data.messageId ?? parsed.data.id ?? 0,
       message: parsed.data.message.trim(),
       updatedBy,
-      projectId: authResult.auth.projectId,
+      projectId: ADMIN_ALL_PROJECTS,
     });
 
     if (result.rowCount < 1) {
       return v1Json({ success: false, error: "Message not found for this feedback." }, { status: 404 });
     }
 
-    const messages = getThreadMessages(feedbackId, authResult.auth.projectId);
+    const messages = getThreadMessages(feedbackId, ADMIN_ALL_PROJECTS);
     return v1Json({ success: true, data: messages });
   } catch (error) {
     logError(error, { operation: "v1/admin/feedback/messages PATCH", resource: req.url });
@@ -153,7 +153,7 @@ export async function POST(
       );
     }
 
-    const feedback = getFeedbackById(feedbackId, authResult.auth.projectId);
+    const feedback = getFeedbackById(feedbackId, ADMIN_ALL_PROJECTS);
     if (!feedback) {
       return v1Json({ success: false, error: "Feedback not found for this project." }, { status: 404 });
     }
@@ -194,7 +194,7 @@ export async function POST(
       logError(err, { operation: "syncPromotedFeedbackToPlatformsOnReply", resource: String(feedbackId) });
     });
 
-    const messages = getThreadMessages(feedbackId, authResult.auth.projectId);
+    const messages = getThreadMessages(feedbackId, ADMIN_ALL_PROJECTS);
     return v1Json({ success: true, data: messages }, { status: 201 });
   } catch (error) {
     logError(error, { operation: "v1/admin/feedback/messages POST", resource: req.url });

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { selectfeedback } from "@/lib/feedback/sqlite-queries";
-import { authenticateApiKey, requireAdmin, v1Json, v1PreflightResponse } from "@/lib/api-v1";
+import { ADMIN_ALL_PROJECTS, authenticateApiKey, requireAdmin, v1Json, v1PreflightResponse } from "@/lib/api-v1";
 
 export async function OPTIONS() {
   return v1PreflightResponse();
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     if (draft !== null) filters.draft = draft;
     if (sessionEmail) filters.__session_email = sessionEmail;
 
-    const result = selectfeedback(filters, [], { page, pageSize }, authResult.auth.projectId);
+    const result = selectfeedback(filters, [], { page, pageSize }, ADMIN_ALL_PROJECTS);
 
     return v1Json({
       data: result.data,
