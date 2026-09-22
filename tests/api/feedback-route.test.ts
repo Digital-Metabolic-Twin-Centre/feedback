@@ -199,9 +199,11 @@ describe("feedback route", () => {
     await Promise.resolve();
   });
 
-  test("POST returns 502 when promotion sync fails with PlatformSyncError", async () => {
+  test("POST still returns 201 with a sync warning when promotion sync fails", async () => {
     const insertFeedback = jest.fn().mockReturnValue({ insertedId: 123 });
-     class PlatformSyncError extends Error {
+    const logError = jest.fn();
+    const notifyfeedbackubmitted = jest.fn().mockResolvedValue(undefined);
+    class PlatformSyncError extends Error {
       failures: unknown[];
       partialResults: unknown[];
 
@@ -218,7 +220,7 @@ describe("feedback route", () => {
       selectfeedback: jest.fn(),
     }));
     jest.doMock("@/lib/feedback-notifications", () => ({
-      notifyfeedbackubmitted: jest.fn().mockResolvedValue(undefined),
+      notifyfeedbackubmitted,
     }));
     jest.doMock("@/lib/promoted-feedback-sync", () => ({
       PlatformSyncError,
@@ -226,6 +228,7 @@ describe("feedback route", () => {
         throw new PlatformSyncError("Sync failed", [{ platform: "github" }], [{ platform: "gitlab" }]);
       }),
     }));
+    jest.doMock("@/lib/error-logger", () => ({ logError }));
     jest.doMock("@/lib/api-v1", () => ({
       authenticateApiKey: jest.fn().mockResolvedValue({
         ok: true,
@@ -250,14 +253,21 @@ describe("feedback route", () => {
       })
     );
 
-    expect(response.status).toBe(502);
+    expect(response.status).toBe(201);
     const body = await response.json();
     expect(body).toEqual(
       expect.objectContaining({
-        success: false,
-        error: "Sync failed",
+        success: true,
+        id: 123,
+        warnings: { sync: { message: "Sync failed", failures: [{ platform: "github" }] } },
       })
     );
+    expect(logError).toHaveBeenCalledWith(
+      expect.any(PlatformSyncError),
+      expect.objectContaining({ operation: "v1/feedback POST sync" }),
+      "warning"
+    );
+    expect(notifyfeedbackubmitted).toHaveBeenCalled();
   });
 
   test("POST returns 500 for generic non-sync errors", async () => {

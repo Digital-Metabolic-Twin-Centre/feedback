@@ -4,6 +4,7 @@ import { insertFeedback, insertThreadMessage, selectfeedback } from "@/lib/feedb
 import { notifyfeedbackubmitted } from "@/lib/feedback-notifications";
 import { authenticateApiKey, requireAdmin, v1Json, v1PreflightResponse } from "@/lib/api-v1";
 import { PlatformSyncError, syncPromotedFeedbackToAvailablePlatforms } from "@/lib/promoted-feedback-sync";
+import { logError } from "@/lib/error-logger";
 
 const feedbackPayloadSchema = z.object({
   email: z.string().email(),
@@ -55,8 +56,17 @@ export async function POST(req: NextRequest) {
       createdBy: payload.email,
     });
 
+    // The feedback is already persisted, so a platform sync failure must not
+    // fail the request (clients would retry and create duplicates).
+    let syncWarning: { message: string; failures: PlatformSyncError["failures"] } | null = null;
     if (payload.promote && !payload.draft) {
-      await syncPromotedFeedbackToAvailablePlatforms(result.insertedId);
+      try {
+        await syncPromotedFeedbackToAvailablePlatforms(result.insertedId);
+      } catch (error) {
+        if (!(error instanceof PlatformSyncError)) throw error;
+        logError(error, { operation: "v1/feedback POST sync", resource: req.url }, "warning");
+        syncWarning = { message: error.message, failures: error.failures };
+      }
     }
 
     if (!payload.draft) {
@@ -76,24 +86,11 @@ export async function POST(req: NextRequest) {
           slug: authResult.auth.projectSlug,
           name: authResult.auth.projectName,
         },
+        ...(syncWarning ? { warnings: { sync: syncWarning } } : {}),
       },
       { status: 201 }
     );
   } catch (error) {
-    if (error instanceof PlatformSyncError) {
-      return v1Json(
-        {
-          success: false,
-          error: error.message,
-          sync: {
-            failures: error.failures,
-            partialResults: error.partialResults,
-          },
-        },
-        { status: 502 }
-      );
-    }
-
     return v1Json(
       {
         success: false,

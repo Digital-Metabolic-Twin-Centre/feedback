@@ -257,19 +257,17 @@ export async function PATCH(
 
     return v1Json(syncResults ? { success: true, sync: syncResults } : { success: true });
   } catch (err) {
+    // Sync only runs after the update is persisted, so report it as a warning
+    // rather than failing the request.
     if (err instanceof PlatformSyncError) {
-      logError(err, { operation: "v1/admin/feedback PATCH sync", resource: req.url });
-      return v1Json(
-        {
-          success: false,
-          error: err.message,
-          sync: {
-            failures: err.failures,
-            partialResults: err.partialResults,
-          },
+      logError(err, { operation: "v1/admin/feedback PATCH sync", resource: req.url }, "warning");
+      return v1Json({
+        success: true,
+        sync: err.partialResults,
+        warnings: {
+          sync: { message: err.message, failures: err.failures },
         },
-        { status: 502 },
-      );
+      });
     }
     logError(err, { operation: "v1/admin/feedback PATCH", resource: req.url });
     const message = err instanceof Error ? err.message : "Internal server error";
